@@ -5,5 +5,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 
-public interface Space_images extends JpaRepository<Space_images,Integer> {
+public interface Space_images extends JpaRepository<Space_images,Long> {
 }

@@ -6,5 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 
-public interface ConsumersRepository extends JpaRepository<Consumers,Integer> {
+public interface ConsumersRepository extends JpaRepository<Consumers,Long> {
 }

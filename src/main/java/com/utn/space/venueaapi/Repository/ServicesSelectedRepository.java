@@ -6,5 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 
-public interface ServicesSelectedRepository extends JpaRepository<Services_selected,Integer> {
+public interface ServicesSelectedRepository extends JpaRepository<Services_selected,Long> {
 }
