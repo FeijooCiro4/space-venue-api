@@ -1,6 +1,6 @@
 package com.utn.space.venueaapi.Repository;
 
-import com.utn.space.venueaapi.Model.Services;
+import com.utn.space.venueaapi.model.Services;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

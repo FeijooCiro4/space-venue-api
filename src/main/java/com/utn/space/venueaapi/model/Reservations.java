@@ -1,4 +1,4 @@
-package com.utn.space.venueaapi.Model;
+package com.utn.space.venueaapi.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;

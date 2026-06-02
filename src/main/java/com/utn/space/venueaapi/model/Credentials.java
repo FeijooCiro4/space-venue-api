@@ -1,4 +1,4 @@
-package com.utn.space.venueaapi.Model;
+package com.utn.space.venueaapi.model;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;

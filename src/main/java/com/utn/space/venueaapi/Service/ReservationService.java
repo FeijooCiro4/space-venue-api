@@ -1,7 +1,7 @@
 package com.utn.space.venueaapi.Service;
 
 import com.utn.space.venueaapi.Exceptions.ExceptionIdNotFound;
-import com.utn.space.venueaapi.Model.Reservations;
+import com.utn.space.venueaapi.model.Reservations;
 import com.utn.space.venueaapi.Repository.ReservationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
