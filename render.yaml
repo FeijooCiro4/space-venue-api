@@ -8,6 +8,9 @@ services:
     dockerfilePath: ./frontend/Dockerfile
     region: ohio
     plan: free
+    envVars:
+      - key: BACKEND_URL
+        value: https://spacevenue-backend-mv1z.onrender.com
 
   # ──────────────────────────────────────────────
   #  Backend Spring Boot

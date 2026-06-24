@@ -62,7 +62,7 @@ services:
     depends_on:
       - backend
     environment:
-      BACKEND_URL: http://spacevenue-backend:8080   # ← hostname Docker interno
+      BACKEND_URL: http://backend:8080   # ← hostname Docker interno
     ports:
       - "80:80"
 
