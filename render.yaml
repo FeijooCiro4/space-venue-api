@@ -5,11 +5,9 @@ services:
   - type: web
     name: spacevenue-frontend
     env: docker
-    dockerfile: ./frontend/Dockerfile
+    dockerfilePath: ./frontend/Dockerfile
     region: ohio
     plan: free
-    ports:
-      - key: 80
 
   # ──────────────────────────────────────────────
   #  Backend Spring Boot
@@ -17,7 +15,7 @@ services:
   - type: pserv
     name: spacevenue-backend
     env: docker
-    dockerfile: ./Dockerfile
+    dockerfilePath: ./Dockerfile
     region: ohio
     plan: free
     envVars:
