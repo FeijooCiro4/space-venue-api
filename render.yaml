@@ -23,13 +23,13 @@ services:
         value: 8080
       - key: SPRING_DATASOURCE_URL
         fromGroup: spacevenue-secrets
-        value: SPRING_DATASOURCE_URL
+        fromNewKey: SPRING_DATASOURCE_URL
       - key: SPRING_DATASOURCE_USERNAME
         fromGroup: spacevenue-secrets
-        value: SPRING_DATASOURCE_USERNAME
+        fromNewKey: SPRING_DATASOURCE_USERNAME
       - key: SPRING_DATASOURCE_PASSWORD
         fromGroup: spacevenue-secrets
-        value: SPRING_DATASOURCE_PASSWORD
+        fromNewKey: SPRING_DATASOURCE_PASSWORD
       - fromGroup: spacevenue-secrets
 
 # ──────────────────────────────────────────────
