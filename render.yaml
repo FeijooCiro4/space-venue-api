@@ -1,6 +1,6 @@
 services:
   # ──────────────────────────────────────────────
-  #  Frontend Nginx (Punto de entrada público)
+  #  Frontend Nginx
   # ──────────────────────────────────────────────
   - type: web
     name: spacevenue-frontend
@@ -12,9 +12,9 @@ services:
       - key: 80
 
   # ──────────────────────────────────────────────
-  #  Backend Spring Boot (Servicio Privado Interno)
+  #  Backend Spring Boot
   # ──────────────────────────────────────────────
-  - type: private
+  - type: pserv
     name: spacevenue-backend
     env: docker
     dockerfile: ./Dockerfile
@@ -23,9 +23,7 @@ services:
     envVars:
       - key: PORT
         value: 8080
-      # Vincula todas las variables secretas definidas abajo
       - fromGroup: spacevenue-secrets
-      # Construcción automática de la URL para Spring usando los datos de Aiven
       - key: SPRING_DATASOURCE_URL
         value: jdbc:mysql://${DB_HOST}:${DB_PORT}/${DB_NAME}?useSSL=true&serverTimezone=UTC&allowPublicKeyRetrieval=true
       - key: SPRING_DATASOURCE_USERNAME
@@ -36,21 +34,21 @@ services:
         value: ${MERCADOPAGO_ACCESS_TOKEN}
 
 # ──────────────────────────────────────────────
-#  Grupo de Variables de Entorno (Tu .env)
+#  Grupo de Variables de Entorno
 # ──────────────────────────────────────────────
 envGroups:
   - name: spacevenue-secrets
     envVars:
       - key: DB_HOST
-        sync: false # Lo rellenas en la web de Render con el host de Aiven
+        sync: false
       - key: DB_PORT
-        sync: false # Lo rellenas con el puerto de Aiven (ej. 12345)
+        sync: false
       - key: DB_NAME
         value: space_venue_db
       - key: DB_USER
-        sync: false # Tu usuario de Aiven
+        sync: false
       - key: DB_PASSWORD
-        sync: false # Tu contraseña de Aiven
+        sync: false
       - key: GOOGLE_OAUTH2_CLIENT_ID
         sync: false
       - key: GOOGLE_OAUTH2_CLIENT_SECRET
