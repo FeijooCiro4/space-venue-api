@@ -22,3 +22,28 @@ services:
       - key: PORT
         value: 8080
       - fromGroup: spacevenue-secrets
+
+# ──────────────────────────────────────────────
+#  Grupo de Variables de Entorno
+# ──────────────────────────────────────────────
+envGroups:
+  - name: spacevenue-secrets
+    envVars:
+      - key: SPRING_DATASOURCE_URL
+        sync: false
+      - key: SPRING_DATASOURCE_USERNAME
+        sync: false
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false
+      - key: MERCADOPAGO_ACCESS_TOKEN
+        sync: false
+      - key: GOOGLE_OAUTH2_CLIENT_ID
+        sync: false
+      - key: GOOGLE_OAUTH2_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_OAUTH2_REDIRECT_URI
+        sync: false
+      - key: GOOGLE_CREDENTIALS_BASE64
+        sync: false
+      - key: ID_FOR_GOOGLE_CALENDAR
+        sync: false
