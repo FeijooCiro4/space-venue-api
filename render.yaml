@@ -12,7 +12,7 @@ services:
   # ──────────────────────────────────────────────
   #  Backend Spring Boot
   # ──────────────────────────────────────────────
-  - type: pserv
+  - type: web
     name: spacevenue-backend
     env: docker
     dockerfilePath: ./Dockerfile
