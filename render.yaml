@@ -21,15 +21,6 @@ services:
     envVars:
       - key: PORT
         value: 8080
-      - key: SPRING_DATASOURCE_URL
-        fromGroup: spacevenue-secrets
-        fromNewKey: SPRING_DATASOURCE_URL
-      - key: SPRING_DATASOURCE_USERNAME
-        fromGroup: spacevenue-secrets
-        fromNewKey: SPRING_DATASOURCE_USERNAME
-      - key: SPRING_DATASOURCE_PASSWORD
-        fromGroup: spacevenue-secrets
-        fromNewKey: SPRING_DATASOURCE_PASSWORD
       - fromGroup: spacevenue-secrets
 
 # ──────────────────────────────────────────────
