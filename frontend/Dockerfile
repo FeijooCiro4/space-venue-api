@@ -4,8 +4,10 @@ RUN rm -rf /usr/share/nginx/html/*
 
 COPY ./frontend /usr/share/nginx/html
 
-COPY ./frontend/nginx.conf /etc/nginx/conf.d/default.conf
+COPY ./frontend/nginx.conf /etc/nginx/templates/default.conf.template
 
 EXPOSE 80
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["/bin/sh", "-c", \
+  "envsubst '${BACKEND_URL}' < /etc/nginx/templates/default.conf.template \
+  > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]

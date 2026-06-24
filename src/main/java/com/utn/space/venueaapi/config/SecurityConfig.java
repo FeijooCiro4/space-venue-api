@@ -111,7 +111,8 @@ public class SecurityConfig {
                 "http://localhost:5500",      // Live Server de VS Code común
                 "http://127.0.0.1:5500",      // Live Server por IP
                 "http://127.0.0.1",           // Loopback local estándar
-                "https://space-venue-front.onrender.com" // DNS del front desplegado
+                "https://space-venue-front.onrender.com", // DNS del front desplegado
+                "https://spacevenue-frontend-mv1z.onrender.com/"  // DNS alternativo del front desplegado
         ));
 
         // Métodos HTTP permitidos
