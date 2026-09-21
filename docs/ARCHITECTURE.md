@@ -1,6 +1,6 @@
 # Arquitectura del backend
 
-La aplicación es una API REST de reservas. El proyecto Java está en `backend/`, con construcción Maven y Docker independiente. El entorno local contiene únicamente la API y MySQL.
+La aplicación es una API REST de reservas. El proyecto Java está en `backend/`, con construcción Maven independiente. El servidor se ejecuta como proceso Java y se conecta a MySQL.
 
 ## Responsabilidades
 
@@ -24,7 +24,7 @@ Swagger UI documenta el contrato del servidor. CORS define los orígenes autoriz
 
 ## Ejecución
 
-`docker-compose.yml` inicia `db` y `backend`. `render.yaml` define únicamente el servicio de la API, con contexto `backend/`. Las variables privadas pertenecen al proceso del servidor. Ver [README](../README.md) y [contrato HTTP](API.md).
+El punto de entrada es `com.utn.space.venueaapi.Application`. Se ejecuta desde el IDE, con `./mvnw spring-boot:run` o mediante el JAR compilado. Las variables privadas pertenecen al proceso del servidor. Ver [README](../README.md) y [contrato HTTP](API.md).
 
 ## Pendientes identificados en el código
 
@@ -63,7 +63,5 @@ cd backend
 ./mvnw test
 ./mvnw package
 ```
-
-Desde la raíz se puede validar la orquestación con `docker compose --env-file .env.example config --quiet`.
 
 Las siete pruebas Java cubren arranque, CORS, catálogo/OpenAPI, filtros, protección de contraseñas, ausencia del contrato retirado y regresión de reservas. H2 no sustituye la validación con MySQL ni una compra real con Mercado Pago.

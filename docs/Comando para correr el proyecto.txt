@@ -1,8 +1,16 @@
-Desde la raíz:
-cp .env.example .env
-# Completar .env antes de ejecutar.
-docker compose up --build
+Requisitos: Java 17 o superior y MySQL.
+Configurar las variables de backend/.env.example en el IDE o la terminal.
+Maven no carga archivos .env automáticamente.
 
-Pruebas del backend:
+Desde la raíz:
 cd backend
+./mvnw spring-boot:run
+
+Pruebas (desde backend):
 ./mvnw test
+
+Compilar y ejecutar (desde backend):
+./mvnw package
+java -jar target/space-venueapi-0.0.1-SNAPSHOT.jar
+
+En Windows, usar mvnw.cmd en lugar de ./mvnw.
