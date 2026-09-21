@@ -1,24 +1,12 @@
 services:
   # ──────────────────────────────────────────────
-  #  Frontend Nginx
-  # ──────────────────────────────────────────────
-  - type: web
-    name: spacevenue-frontend
-    env: docker
-    dockerfilePath: ./frontend/Dockerfile
-    region: ohio
-    plan: free
-    envVars:
-      - key: BACKEND_URL
-        value: https://spacevenue-backend-mv1z.onrender.com
-
-  # ──────────────────────────────────────────────
   #  Backend Spring Boot
   # ──────────────────────────────────────────────
   - type: web
     name: spacevenue-backend
-    env: docker
-    dockerfilePath: ./Dockerfile
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
     region: ohio
     plan: free
     envVars:
@@ -38,15 +26,13 @@ envVarGroups:
         sync: false
       - key: SPRING_DATASOURCE_PASSWORD
         sync: false
-      - key: MERCADOPAGO_ACCESS_TOKEN
+      - key: MP_ACCESS_TOKEN
         sync: false
-      - key: GOOGLE_OAUTH2_CLIENT_ID
+      - key: CORS_ALLOWED_ORIGINS
         sync: false
-      - key: GOOGLE_OAUTH2_CLIENT_SECRET
+      - key: PAYMENT_SUCCESS_URL
         sync: false
-      - key: GOOGLE_OAUTH2_REDIRECT_URI
+      - key: PAYMENT_FAILURE_URL
         sync: false
-      - key: GOOGLE_CREDENTIALS_BASE64
-        sync: false
-      - key: ID_FOR_GOOGLE_CALENDAR
+      - key: PAYMENT_PENDING_URL
         sync: false

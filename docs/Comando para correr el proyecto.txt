@@ -1,0 +1,8 @@
+Desde la raíz:
+cp .env.example .env
+# Completar .env antes de ejecutar.
+docker compose up --build
+
+Pruebas del backend:
+cd backend
+./mvnw test
