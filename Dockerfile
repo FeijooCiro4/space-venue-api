@@ -10,5 +10,5 @@ WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
 EXPOSE 8080
 
-# Render (o docker-compose) → Spring las lee desde el environment.
+# docker-compose → Spring las lee desde el environment.
 ENTRYPOINT ["java", "-jar", "app.jar"]

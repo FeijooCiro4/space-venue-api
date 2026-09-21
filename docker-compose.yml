@@ -50,21 +50,5 @@ services:
     ports:
       - "8080:8080"   # expuesto sólo para debug; el front lo accede vía Nginx
 
-  # ──────────────────────────────────────────────
-  #  Frontend Nginx
-  # ──────────────────────────────────────────────
-  frontend:
-    build:
-      context: ./frontend        # ← build desde la carpeta del frontend
-      dockerfile: Dockerfile     # ← ./frontend/Dockerfile
-    container_name: spacevenue-frontend
-    restart: unless-stopped
-    depends_on:
-      - backend
-    environment:
-      BACKEND_URL: http://backend:8080   # ← hostname Docker interno
-    ports:
-      - "80:80"
-
 volumes:
   db_data:
