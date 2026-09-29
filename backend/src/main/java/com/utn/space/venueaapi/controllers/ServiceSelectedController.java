@@ -10,6 +10,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,6 +24,7 @@ public class ServiceSelectedController {
     private ServiceSelectedService service;
 
     @GetMapping("/reservation/{idReservation}")
+    @PreAuthorize("hasRole('ADMIN') or @securityUtils.canReadReservation(#idReservation, authentication.name)")
     @Operation(
             summary = "Busca TODAS las Reservas.",
             description = "Devuelve una lista Completa de Reservas."
@@ -35,6 +37,7 @@ public class ServiceSelectedController {
 
     //Este es un metodo que usaría un Consumer para seleccionar los servicios de un espacio que quiere para una reserva
     @PostMapping("/insert/list/{idReservation}")
+    @PreAuthorize("hasRole('ADMIN') or @securityUtils.isConsumerOfReservation(#idReservation, authentication.name)")
     @Operation(
             summary = "Agrega un Servicio Seleccionado a una reserva.",
             description = "Agrega un Servicio Seleccionado a una reserva por su ID."
@@ -64,6 +67,7 @@ public class ServiceSelectedController {
     }
 
     @DeleteMapping("/delete/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @securityUtils.isSelectedServiceConsumer(#id, authentication.name)")
     @Operation(
             summary = "Elimina un Servicio Seleccionado.",
             description = "Elimina un Servicio Seleccionado por ID."

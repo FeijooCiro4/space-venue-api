@@ -178,10 +178,12 @@ public class ReservationService {
         if (dto.fromDate().isBefore(LocalDateTime.now())) {
             throw new InvalidDateException("La Fecha Final no puede ser antes que la Fecha de Inicio");
         }
-        if(!reservationRepository.existsById(dto.id())){
-            throw new IdNotFoundException ("Reservation", dto.id());
-        }
+        Reservation existingReservation = findById(dto.id());
         Reservation nuevaReserva = reservationMapper.toEntity(dto);
+        // Los cambios de estado tienen endpoints con permisos específicos.
+        nuevaReserva.setStatus(existingReservation.getStatus());
+        nuevaReserva.setIsActive(existingReservation.getIsActive());
+        nuevaReserva.setCreatedAt(existingReservation.getCreatedAt());
 
         nuevaReserva.setConsumer(consumerService.findById(dto.idConsumer()));
 

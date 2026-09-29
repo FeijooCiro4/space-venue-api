@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -42,6 +43,7 @@ public class SpaceImageController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @securityUtils.isSpaceImageOwner(#id, authentication.name)")
     @Operation(
             summary = "Borrar una Imagen."
     )
@@ -50,6 +52,7 @@ public class SpaceImageController {
     }
 
     @PostMapping()
+    @PreAuthorize("hasRole('ADMIN') or @securityUtils.isSpaceOwner(#spaceImageDTO.idSpace(), authentication.name)")
     @Operation(
             summary = "Crea una Imagen."
     )
@@ -77,6 +80,7 @@ public class SpaceImageController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or (@securityUtils.isSpaceImageOwner(#id, authentication.name) and @securityUtils.isSpaceOwner(#spaceImageDTO.idSpace(), authentication.name))")
     @Operation(
             summary = "Modifica una Imagen."
     )

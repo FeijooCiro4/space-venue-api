@@ -90,6 +90,7 @@ public class NotificationController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @securityUtils.isNotificationConsumer(#id, authentication.name)")
     @Operation(
             summary = "Busca una notificación en particular.",
             description = "Busca una notificación por su ID."
@@ -101,6 +102,7 @@ public class NotificationController {
 
 
     @PostMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @securityUtils.isNotificationConsumer(#id, authentication.name)")
 
     @Operation(
             summary = "Marca como vista a una notificación",

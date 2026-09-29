@@ -9,6 +9,7 @@ import com.utn.space.venueaapi.model.records.CommentDTO;
 import com.utn.space.venueaapi.repository.CommentRepository;
 import com.utn.space.venueaapi.service.mappers.CommentMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -44,7 +45,7 @@ public class CommentService {
         Comment commentToDelete = commentRepository.findById(id).orElseThrow(()-> new IdNotFoundException("No se encontro el comentario a eliminar: ", id));
         //Logica para que un usuario solo elimine comentarios propios
         if(!commentToDelete.getConsumer().getIdConsumer().equals(consumerService.getLoggedConsumerId())){
-            throw new InvalidDataException("No se puede elimnar un comentario que no es propio");
+            throw new AccessDeniedException("No se puede eliminar un comentario que no es propio");
         }
         commentRepository.deleteById(id);
     }
@@ -141,8 +142,10 @@ public class CommentService {
     }
 
     public void consumerModifyCommentOnSpace(Integer id,CommentDTO commentDTO){
-        if(!commentDTO.idConsumer().equals(consumerService.getLoggedConsumerId())){
-            throw new InvalidDataException("No se puede modificar un comentario que no es propio");
+        Comment existingComment = commentRepository.findById(id)
+                .orElseThrow(() -> new IdNotFoundException("Comment", id));
+        if(!existingComment.getConsumer().getIdConsumer().equals(consumerService.getLoggedConsumerId())){
+            throw new AccessDeniedException("No se puede modificar un comentario que no es propio");
         }
 
         modifyComment(id,commentDTO);

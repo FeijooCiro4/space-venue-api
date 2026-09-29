@@ -26,14 +26,31 @@ Swagger UI documenta el contrato del servidor. CORS define los orígenes autoriz
 
 El punto de entrada es `com.utn.space.venueaapi.Application`. Se ejecuta desde el IDE, con `./mvnw spring-boot:run` o mediante el JAR compilado. Las variables privadas pertenecen al proceso del servidor. Ver [README](../README.md) y [contrato HTTP](API.md).
 
+## Permisos sobre recursos
+
+Los controladores reutilizan `@PreAuthorize` y `SecurityUtils` para comprobar la propiedad en la base de datos. La edición y eliminación de comentarios verifican al autor almacenado en `CommentService`. `GlobalExceptionHandler` responde 403 ante `AccessDeniedException`.
+
+| Recurso / operación | Usuarios autorizados |
+| --- | --- |
+| Lista global de reservas | ADMIN |
+| Consulta de reserva y de sus servicios seleccionados | Cliente titular, dueño del espacio o ADMIN |
+| Edición de reserva y cambios de servicios seleccionados | Cliente titular o ADMIN; el cliente no puede transferir la reserva |
+| Confirmar, rechazar o completar reserva | Dueño del espacio o ADMIN |
+| Cancelar reserva | Cliente titular, dueño del espacio o ADMIN |
+| Baja lógica de reserva | ADMIN |
+| Crear, editar o borrar imágenes | Dueño del espacio o ADMIN; al editar se comprueban tanto la imagen guardada como el espacio de destino |
+| Consultar o marcar notificación por ID | Destinatario o ADMIN |
+| Editar o borrar comentario | Autor guardado o ADMIN |
+| Consultar perfil por ID | El propio usuario o ADMIN |
+
+La edición general de reservas conserva estado, actividad y fecha de creación. Los permisos del checkout se mantienen: CLIENT titular de la reserva. Las lecturas públicas del catálogo, imágenes y comentarios por espacio conservan su acceso público.
+
 ## Pendientes identificados en el código
 
 Los siguientes problemas existían antes de reorganizar el proyecto y requieren una etapa específica de corrección.
 
 | Hallazgo | Evidencia | Trabajo pendiente |
 | --- | --- | --- |
-| Permisos de reservas incompletos | `ReservationController`, `ReservationService` | Limitar consultas y cambios de estado al cliente/propietario correspondiente; la consulta global devuelve todas las reservas. |
-| Autorización incompleta en otros recursos | `SpaceImageService`, `ServiceSelectedService`, `NotificationService`, `CommentService.consumerModifyCommentOnSpace` | Mutaciones por ID y comparación con `idConsumer` del DTO requieren validación sobre el registro almacenado. |
 | Webhook de pagos incompleto | `PaymentWebhookController`, `SecurityConfig`, `PaymentServiceImpl` | La ruta exige autenticación de la aplicación y contiene una simulación que puede confirmar reservas. Separar simulación de producción, verificar autenticidad del proveedor y después configurar acceso al webhook. No se abrió públicamente esa ruta. |
 | Estados de pago y reserva mezclados | `PaymentServiceImpl.processNotification`, `ReservationService` | Confirmación del anfitrión y pago aprobado usan `CONFIRMED`; revisar transiciones, validación de importe/moneda e idempotencia. |
 | Sesiones y bajas de usuario | `JwtUtil`, `TokenBlacklistService`, `CustomUserDetailsService` | Clave JWT nueva en cada arranque; blacklist de una hora frente a JWT de diez horas; el adaptador no traslada el estado deshabilitado al UserDetails final. |
@@ -64,4 +81,4 @@ cd backend
 ./mvnw package
 ```
 
-Las siete pruebas Java cubren arranque, CORS, catálogo/OpenAPI, filtros, protección de contraseñas, ausencia del contrato retirado y regresión de reservas. H2 no sustituye la validación con MySQL ni una compra real con Mercado Pago.
+Las pruebas Java cubren arranque, CORS, catálogo/OpenAPI, filtros, protección de contraseñas, ausencia del contrato retirado y regresión de reservas. `ResourceOwnershipTests` agrega 33 casos con JWT reales para accesos ajenos, titulares, dueños y administradores, incluyendo falsificación de IDs y cambios de estado por el PUT general. H2 no sustituye la validación con MySQL ni una compra real con Mercado Pago.

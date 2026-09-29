@@ -85,6 +85,7 @@ public class ReservationController {
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(
             summary = "Busca TODAS las Reservas.",
             description = "Devuelve una lista Completa de Reservas."
@@ -108,6 +109,7 @@ public class ReservationController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @securityUtils.canReadReservation(#id, authentication.name)")
     @Operation(
             summary = "Busca una Reserva.",
             description = "Busca la ID de una reserva y la devuelve."
@@ -174,6 +176,7 @@ public class ReservationController {
     }
 
     @PutMapping
+    @PreAuthorize("hasRole('ADMIN') or (@securityUtils.isConsumerOfReservation(#dto.id(), authentication.name) and @securityUtils.isCurrentConsumer(#dto.idConsumer(), authentication.name))")
     public ResponseEntity<Reservation> modifyReservation(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "Entra los datos obligatorios de la creacion de una nueva Reserva",
@@ -205,7 +208,7 @@ public class ReservationController {
     }
 
     @PutMapping("/confirm/{id}")
-    @PreAuthorize("hasAnyRole('CLIENT', 'ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or @securityUtils.isSpaceOwnerOfReservation(#id, authentication.name)")
     @Operation(
             summary = "El duenio Confirma una Reserva.",
             description = "Busca la ID de una reserva y le cambia su Estado a CONFIRM."
@@ -218,6 +221,7 @@ public class ReservationController {
 
     // Caso de uso: El Dueño rechaza la solicitud de reserva
     @PutMapping("/reject/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @securityUtils.isSpaceOwnerOfReservation(#id, authentication.name)")
     @Operation(
             summary = "El duenio rechaza una Reserva.",
             description = "Busca la ID de una reserva y le cambia su Estado a REJECTED."
@@ -227,6 +231,7 @@ public class ReservationController {
     }
 
     @PutMapping("/complete/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @securityUtils.isSpaceOwnerOfReservation(#id, authentication.name)")
     @Operation(
             summary = "Completa una Reserva.",
             description = "Busca la ID de una reserva y le cambia su Estado a COMPLETED."
@@ -238,6 +243,7 @@ public class ReservationController {
     }
 
     @PutMapping("/cancel/{id}")
+    @PreAuthorize("hasRole('ADMIN') or @securityUtils.canReadReservation(#id, authentication.name)")
     @Operation(
             summary = "Cancela una Reserva.",
             description = "Busca la ID de una reserva y le cambia su Estado a CANCELLED."

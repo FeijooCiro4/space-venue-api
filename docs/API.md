@@ -17,7 +17,7 @@ curl http://localhost:8080/api/reservations/me \
 
 Registro recomendado: `POST /auth/register` con `firstname`, `lastname`, `email`, `phone`, `username`, `password`. Respuesta 201 en texto. Logout: `POST /auth/logout` con Authorization.
 
-Roles existentes: `ROLE_CLIENT`, `ROLE_ADMIN`. Las decisiones de autorización se validan en el servidor. Consultá los huecos actuales de permisos en [ARCHITECTURE.md](ARCHITECTURE.md).
+Roles existentes: `ROLE_CLIENT`, `ROLE_ADMIN`. Las decisiones de autorización se validan en el servidor. Los accesos a recursos ajenos se rechazan con 403; consultá la matriz de permisos en [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Operaciones principales
 
@@ -32,17 +32,17 @@ Todas las rutas de la tabla son relativas a `/api`. Para el catálogo completo d
 | Edición propia | `PUT /spaces/ownedspace/{id}`, `DELETE /spaces/ownedspace/{id}` | Edición y baja lógica; revisar pendientes de edición |
 | Administración | `GET /spaces/showinactives`, `POST /spaces/byfields/showinactives`, `POST /spaces`, `PUT /spaces/{id}`, `DELETE /spaces/{id}` | Requiere administrador |
 | Imágenes | `GET /spaceimages/byspaceid/{id}` | Imágenes públicas del espacio |
-| Imágenes | `POST /spaceimages`, `PUT /spaceimages/{id}`, `DELETE /spaceimages/{id}` | Gestión de imágenes con autenticación |
+| Imágenes | `POST /spaceimages`, `PUT /spaceimages/{id}`, `DELETE /spaceimages/{id}` | Gestión de imágenes: dueño del espacio o ADMIN |
 | Servicios | `GET /services/space/{idSpace}` | Opcionales del espacio; autenticado |
 | Servicios | `POST /services/insert`, `PUT /services/update/{id}`, `DELETE /services/space/{idSpace}/delete/{id}` | Gestión de servicios |
 | Reservas | `POST /reservations`, `GET /reservations/me`, `GET /reservations/{id}` | Crear y consultar reservas |
-| Reservas generales | `GET /reservations` | Lista global actual; pendiente limitar visibilidad por rol/propietario |
-| Estados | `PUT /reservations/confirm/{id}`, `/reject/{id}`, `/cancel/{id}`, `/complete/{id}` | Cambios de estado; permisos actuales requieren revisión |
+| Reservas generales | `GET /reservations` | Lista global exclusiva de ADMIN; el cliente usa `/reservations/me` |
+| Estados | `PUT /reservations/confirm/{id}`, `/reject/{id}`, `/cancel/{id}`, `/complete/{id}` | Confirmar/rechazar/completar: dueño del espacio o ADMIN. Cancelar: cliente titular, dueño o ADMIN |
 | Pago | `POST /reservations/{id}/checkout` | Devuelve `{ "initPoint": "..." }`; reserva confirmada y cliente titular |
-| Servicios reservados | `GET /servicesselected/reservation/{idReservation}`, `POST /servicesselected/insert/list/{idReservation}`, `DELETE /servicesselected/delete/{id}` | Opcionales congelados en la reserva |
+| Servicios reservados | `GET /servicesselected/reservation/{idReservation}`, `POST /servicesselected/insert/list/{idReservation}`, `DELETE /servicesselected/delete/{id}` | Lectura: cliente titular, dueño o ADMIN; cambios: cliente titular o ADMIN |
 | Comentarios | `GET /comments/byspaceid/{id}`, `POST /comments`, `PUT /comments/{id}`, `DELETE /comments/{id}` | Consulta pública y gestión autenticada |
 | Notificaciones | `GET /notifications/me`, `GET /notifications/unread-count`, `POST /notifications/{id}` | Lista, contador y marcar vista |
-| Perfil | `GET /usuarios/{id}`, `PUT /usuario`, `DELETE /usuario` | Consulta, actualización y baja |
+| Perfil | `GET /usuarios/{id}`, `PUT /usuario`, `DELETE /usuario` | Consulta del perfil propio (o ADMIN), actualización y baja propias |
 | Usuarios | `GET /usuarios`, `POST /usuarios/byfields`, `DELETE /usuarios/{id}` | Gestión administrativa |
 
 ## Filtrar espacios
@@ -110,3 +110,5 @@ El pago se inicia con `POST /reservations/{id}/checkout` y se abre la URL `initP
 - Éxitos y errores pueden ser JSON, texto plano o un cuerpo vacío. Revisar el estado HTTP y admitir esos formatos.
 - Notificaciones incluyen `idNotification`/`id` e `isSeen`/`seen` como alias; `createdAt` es epoch UTC en milisegundos. Listarlas marca las devueltas como vistas.
 - `SpaceImageDTO` recibe `idSpace`, `fileName`, `urlImage`, `dateSend`; no existe un endpoint multipart de archivos. Preferir URLs de imágenes ya alojadas.
+
+La edición `PUT /reservations` requiere ser el cliente titular o ADMIN. Un cliente no puede cambiar el titular; el estado, la actividad y la fecha de creación se conservan desde la base. Los estados se cambian mediante sus operaciones específicas. Las notificaciones por ID requieren ser el destinatario o ADMIN. La edición de comentarios comprueba el autor almacenado, independientemente del `idConsumer` recibido.

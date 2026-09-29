@@ -108,7 +108,7 @@ public class ConsumerController {
     }
 
     @GetMapping("/usuarios/{id}")
-    @PreAuthorize("hasRole('CLIENT') or hasRole('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or @securityUtils.isCurrentConsumer(#id, authentication.name)")
     @Operation(
             summary = "Busca un Usuario",
             description = "Busca un usuarios usando su ID."
