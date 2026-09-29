@@ -17,6 +17,8 @@ curl http://localhost:8080/api/reservations/me \
 
 Registro recomendado: `POST /auth/register` con `firstname`, `lastname`, `email`, `phone`, `username`, `password`. Respuesta 201 en texto. Logout: `POST /auth/logout` con Authorization.
 
+La baja propia (`DELETE /usuario`) o administrativa (`DELETE /usuarios/{id}`) desactiva la cuenta. Desde la siguiente solicitud, sus JWT anteriores reciben 401 aunque no hayan vencido; intentar un nuevo login también devuelve 401. El catálogo público sigue disponible sin token.
+
 Roles existentes: `ROLE_CLIENT`, `ROLE_ADMIN`. Las decisiones de autorización se validan en el servidor. Los accesos a recursos ajenos se rechazan con 403; consultá la matriz de permisos en [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## Operaciones principales

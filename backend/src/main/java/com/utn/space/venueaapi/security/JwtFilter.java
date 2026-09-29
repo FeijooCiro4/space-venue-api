@@ -7,6 +7,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
@@ -15,11 +17,13 @@ public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
     private final TokenBlacklistService blacklistService;
+    private final UserDetailsService userDetailsService;
 
     // Constructor que permite inyectar el utilitario de manejo de tokens
-    public JwtFilter(JwtUtil jwtUtil, TokenBlacklistService blacklistService) {
+    public JwtFilter(JwtUtil jwtUtil, TokenBlacklistService blacklistService, UserDetailsService userDetailsService) {
         this.jwtUtil = jwtUtil;
         this.blacklistService = blacklistService;
+        this.userDetailsService = userDetailsService;
     }
 
     @Override
@@ -54,6 +58,17 @@ public class JwtFilter extends OncePerRequestFilter {
             boolean estaEnBlacklist = blacklistService.isTokenBlacklisted(jwt);
 
             if (esValido && !estaEnBlacklist) {
+                // Consultar el estado actual: un JWT anterior no debe eludir la baja de la cuenta.
+                try {
+                    if (!userDetailsService.loadUserByUsername(username).isEnabled()) {
+                        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Credenciales inválidas");
+                        return;
+                    }
+                } catch (UsernameNotFoundException e) {
+                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Credenciales inválidas");
+                    return;
+                }
+
                 String rol = jwtUtil.extraerRol(jwt);
 
                 var authority = new org.springframework.security.core.authority.SimpleGrantedAuthority(rol);

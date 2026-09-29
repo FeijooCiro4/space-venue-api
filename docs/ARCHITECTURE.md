@@ -45,6 +45,12 @@ Los controladores reutilizan `@PreAuthorize` y `SecurityUtils` para comprobar la
 
 La edición general de reservas conserva estado, actividad y fecha de creación. Los permisos del checkout se mantienen: CLIENT titular de la reserva. Las lecturas públicas del catálogo, imágenes y comentarios por espacio conservan su acceso público.
 
+## Cuentas desactivadas
+
+`CustomUserDetailsService` traslada `Credential.isActive` al estado habilitado de Spring Security. El login rechaza cuentas desactivadas con 401 y el mismo mensaje usado para credenciales inválidas.
+
+En cada solicitud con un JWT válido y fuera de la blacklist, `JwtFilter` vuelve a consultar la credencial mediante ese servicio. Si la cuenta está desactivada o ya no existe, responde 401 antes de ejecutar el controlador. La baja propia y administrativa bloquea así las siguientes solicitudes de tokens ya emitidos. Esta comprobación requiere una consulta de credenciales por solicitud; no cancela operaciones que ya estaban en ejecución al realizarse la baja.
+
 ## Pendientes identificados en el código
 
 Los siguientes problemas existían antes de reorganizar el proyecto y requieren una etapa específica de corrección.
@@ -53,7 +59,7 @@ Los siguientes problemas existían antes de reorganizar el proyecto y requieren 
 | --- | --- | --- |
 | Webhook de pagos incompleto | `PaymentWebhookController`, `SecurityConfig`, `PaymentServiceImpl` | La ruta exige autenticación de la aplicación y contiene una simulación que puede confirmar reservas. Separar simulación de producción, verificar autenticidad del proveedor y después configurar acceso al webhook. No se abrió públicamente esa ruta. |
 | Estados de pago y reserva mezclados | `PaymentServiceImpl.processNotification`, `ReservationService` | Confirmación del anfitrión y pago aprobado usan `CONFIRMED`; revisar transiciones, validación de importe/moneda e idempotencia. |
-| Sesiones y bajas de usuario | `JwtUtil`, `TokenBlacklistService`, `CustomUserDetailsService` | Clave JWT nueva en cada arranque; blacklist de una hora frente a JWT de diez horas; el adaptador no traslada el estado deshabilitado al UserDetails final. |
+| Persistencia y revocación de sesiones | `JwtUtil`, `TokenBlacklistService` | Clave JWT nueva en cada arranque; blacklist de una hora frente a JWT de diez horas. |
 | Registro alternativo duplica hashing | `ConsumerController.createUser`, `CredentialService.saveCredential` | `/api/usuarios` codifica la contraseña dos veces. Usar `/api/auth/register` y unificar registro en una etapa posterior. |
 | Cambio de estado de usuario sin implementación | `ConsumerController.toggleUserStatus` | Responde éxito sin modificar datos y requiere `active`, que es obligatorio en la solicitud. |
 | Edición de espacios propios inconsistente | `SpaceDTO`, `SpaceService.modifyOwnedSpace` y `modifySpace` | El grupo Update exige owner, aunque el propietario se obtiene de la sesión; luego se recrea la entidad sin conservar claramente estado y relaciones. Diseñar DTO de edición específico y actualizar la entidad existente. |
@@ -81,4 +87,4 @@ cd backend
 ./mvnw package
 ```
 
-Las pruebas Java cubren arranque, CORS, catálogo/OpenAPI, filtros, protección de contraseñas, ausencia del contrato retirado y regresión de reservas. `ResourceOwnershipTests` agrega 33 casos con JWT reales para accesos ajenos, titulares, dueños y administradores, incluyendo falsificación de IDs y cambios de estado por el PUT general. H2 no sustituye la validación con MySQL ni una compra real con Mercado Pago.
+Las pruebas Java cubren arranque, CORS, catálogo/OpenAPI, filtros, protección de contraseñas, ausencia del contrato retirado y regresión de reservas. `ResourceOwnershipTests` agrega 33 casos con JWT reales para accesos ajenos, titulares, dueños y administradores, incluyendo falsificación de IDs y cambios de estado por el PUT general. `AccountDeactivationTests` verifica login de cuentas activas e inactivas, baja propia de CLIENT/ADMIN, baja administrativa, rechazo de JWT anteriores y tokens de cuentas inexistentes. H2 no sustituye la validación con MySQL ni una compra real con Mercado Pago.

@@ -34,7 +34,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http, CorsConfigurationSource corsConfigurationSource) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http, CorsConfigurationSource corsConfigurationSource,
+                                          UserDetailsService userDetailsService) throws Exception {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .csrf(csrf -> csrf.disable()) // Desactiva la protección CSRF ya que al usar JWT la API es inherentemente inmune
@@ -68,7 +69,7 @@ public class SecurityConfig {
                 );
 
         // Agrega el filtro interceptor de JWT justo antes del filtro nativo de autenticación de Spring por usuario/contraseña
-        http.addFilterBefore(new JwtFilter(jwtUtil, blacklistService), UsernamePasswordAuthenticationFilter.class);
+        http.addFilterBefore(new JwtFilter(jwtUtil, blacklistService, userDetailsService), UsernamePasswordAuthenticationFilter.class);
 
         return http.build(); // Retorna la cadena de configuración construida
     }

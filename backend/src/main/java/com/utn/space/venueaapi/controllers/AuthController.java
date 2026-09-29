@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.core.Authentication;
@@ -70,7 +71,7 @@ public class AuthController {
 
             String token = jwtUtil.generarToken(username, rol, consumerId);
             return ResponseEntity.ok("Bearer " + token);
-        } catch (BadCredentialsException e) {
+        } catch (BadCredentialsException | DisabledException e) {
             return ResponseEntity.status(401).body("Credenciales inválidas");
         }
     }
