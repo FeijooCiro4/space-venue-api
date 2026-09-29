@@ -23,8 +23,6 @@ Instalá Java 17 o superior y MySQL. Creá la base con un usuario que tenga los 
 CREATE DATABASE space_venue_db;
 ```
 
-Configurá las variables de [backend/.env.example](backend/.env.example) en el IDE o exportalas en la terminal. El archivo es una referencia; Maven no carga `.env` automáticamente.
-
 Generá una clave privada una sola vez con `openssl rand -base64 32` y conservá el valor para `JWT_SECRET_BASE64` entre reinicios.
 
 Ejemplo para Bash, reemplazando usuario, contraseña y clave JWT por tus valores:
@@ -42,24 +40,6 @@ En Windows, usá `mvnw.cmd` y configurá las variables del proceso desde tu term
 
 La API escucha en `http://localhost:8080/api`. El contrato OpenAPI está en `http://localhost:8080/v3/api-docs` y la documentación interactiva en `http://localhost:8080/swagger-ui/index.html`.
 
-Hibernate conserva la configuración actual `ddl-auto=update`. Usá una base de desarrollo para las pruebas manuales.
+Hibernate conserva la configuración actual `ddl-auto=update`. 
 
 Mercado Pago es opcional para el arranque. Para habilitar pagos, configurá `MP_ACCESS_TOKEN` y los destinos completos `PAYMENT_SUCCESS_URL`, `PAYMENT_FAILURE_URL`, `PAYMENT_PENDING_URL`.
-
-## Pruebas y compilación
-
-Desde `backend/`:
-
-```bash
-./mvnw test
-./mvnw package
-java -jar target/space-venueapi-0.0.1-SNAPSHOT.jar
-```
-
-Las pruebas usan H2 en memoria y no requieren MySQL ni credenciales reales. Para ejecutar el JAR deben estar configuradas las variables de conexión a MySQL y `JWT_SECRET_BASE64`. También podés usar Maven instalado (`mvn test`).
-
-## Documentación
-
-- [Contrato de la API](docs/API.md).
-- [Arquitectura y pendientes técnicos](docs/ARCHITECTURE.md).
-- [Configuración del backend](backend/README.md).
