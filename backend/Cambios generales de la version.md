@@ -75,7 +75,7 @@ el intento concurrente de mover dos reservas al mismo espacio y horario.
 Los cambios de pagos del punto 7 de la auditoría fueron retirados y quedan pendientes.
 Esta corrección de edición no requiere una migración del esquema de pagos.
 
-## Servicios contratados y edición de espacios (puntos 9 y 10)
+## Servicios contratados y edición de espacios 
 
 `POST /api/servicesselected/insert/list/{idReservation}` recibe ahora IDs del catálogo:
 
@@ -109,7 +109,7 @@ incluyen, deben coincidir con los almacenados. Ninguna de estas rutas transfiere
 Para modificar el catálogo se usan las rutas de `/api/services`; consultar sus rutas exactas en
 la documentación de la API. No se introduce un cambio de esquema ni una migración de base de datos.
 
-## Privacidad del catálogo y registro (puntos 11 y 12)
+## Privacidad del catálogo y registro 
 
 Las lecturas de espacios devuelven `SpaceResponseDTO`, y las de imágenes devuelven
 `SpaceImageResponseDTO`, con su espacio anidado convertido al mismo DTO. Sus propiedades
