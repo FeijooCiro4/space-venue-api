@@ -74,3 +74,37 @@ el intento concurrente de mover dos reservas al mismo espacio y horario.
 
 Los cambios de pagos del punto 7 de la auditoría fueron retirados y quedan pendientes.
 Esta corrección de edición no requiere una migración del esquema de pagos.
+
+## Servicios contratados y edición de espacios (puntos 9 y 10)
+
+`POST /api/servicesselected/insert/list/{idReservation}` recibe ahora IDs del catálogo:
+
+```json
+[{"idService": 1}, {"idService": 2}]
+```
+
+`idService` es el ID de `SpaceServiceItem`, no el ID de una selección anterior. Cada servicio
+debe existir, estar activo y pertenecer al espacio reservado. Se rechazan listas vacías e IDs
+inválidos o repetidos en la misma solicitud. Precio y descripción se copian del catálogo;
+los campos adicionales enviados por el cliente, como `priceAtReservation`, `descriptionFrozen`
+o `idReservation`, no intervienen. La reserva destino es la indicada en la URL. El payload
+anterior sin `idService` devuelve 400 y los clientes deben adaptar esa llamada. La respuesta
+GET conserva `ServiceSelectedDTO`, incluidos el precio y la descripción contratados.
+
+Agregar, quitar uno o quitar todos los servicios actualiza el total en la misma transacción,
+con bloqueo de la reserva. Se mantiene la restricción de edición: activa, `TENTATIVE` y sin
+pagos registrados. La porción del alquiler ya cotizada se obtiene restando los adicionales
+anteriores al total almacenado; luego se suman los precios congelados de los servicios que
+quedan. Cambiar la tarifa del espacio o el catálogo no modifica retrospectivamente lo contratado.
+Esto conserva cotizaciones coherentes existentes; no reconstruye ni corrige automáticamente
+importes históricos que ya fueran inconsistentes.
+
+`PUT /api/spaces/{id}` y `PUT /api/spaces/ownedspace/{id}` actualizan la entidad existente bajo
+bloqueo. Permiten editar nombre, descripción, precio base, separación entre alquileres,
+ubicación y política de cancelación. La ubicación y política deben existir, como antes.
+Conservan propietario, actividad, fecha de publicación y la colección de servicios; imágenes
+y reservas siguen asociadas. `idSpace` e `idConsumerOwner` pueden omitirse en edición; si se
+incluyen, deben coincidir con los almacenados. Ninguna de estas rutas transfiere la propiedad.
+`active`, `publicationDate` y `services` no reemplazan los valores almacenados durante la edición.
+Para modificar el catálogo se usan las rutas de `/api/services`; consultar sus rutas exactas en
+la documentación de la API. No se introduce un cambio de esquema ni una migración de base de datos.

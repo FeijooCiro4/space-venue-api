@@ -3,6 +3,8 @@ package com.utn.space.venueaapi;
 import com.utn.space.venueaapi.exceptions.InvalidReservationException;
 import com.utn.space.venueaapi.model.*;
 import com.utn.space.venueaapi.model.records.ReservationDTO;
+import com.utn.space.venueaapi.model.records.SelectServiceDTO;
+import com.utn.space.venueaapi.service.ServiceSelectedService;
 import com.utn.space.venueaapi.repository.*;
 import com.utn.space.venueaapi.service.NotificationService;
 import com.utn.space.venueaapi.service.ReservationService;
@@ -33,6 +35,8 @@ import static org.mockito.Mockito.*;
 @ActiveProfiles("test")
 class ReservationConcurrencyTests {
     @Autowired ReservationService service;
+    @Autowired ServiceSelectedService selectionService;
+    @Autowired SpaceServiceItemRepository catalog;
     @Autowired SpaceRepository spaces;
     @Autowired ConsumerRepository consumers;
     @Autowired ReservationRepository reservations;
@@ -177,6 +181,43 @@ class ReservationConcurrencyTests {
         }
         assertEquals(1, succeeded);
         assertEquals(1, reservations.findAllBySpace_IdSpace(targetId).size());
+    }
+
+    @Test
+    void simultaneousServiceAdditionsKeepBothSelectionsAndTheCorrectTotal() throws Exception {
+        Reservation booked = book("concurrent-client-a", firstSpaceId, new CountDownLatch(0)).get(5, TimeUnit.SECONDS);
+        List<Integer> ids = transaction.execute(status -> {
+            Space space = spaces.findById(firstSpaceId).orElseThrow();
+            return List.of(
+                    catalog.saveAndFlush(new SpaceServiceItem(null, "Proyector", new BigDecimal("250"), true, space)).getId(),
+                    catalog.saveAndFlush(new SpaceServiceItem(null, "Sonido", new BigDecimal("125"), true, space)).getId());
+        });
+        CountDownLatch ready = new CountDownLatch(2);
+        List<Future<?>> tasks = new ArrayList<>();
+        transaction.executeWithoutResult(status -> {
+            service.findByIdForUpdate(booked.getId());
+            for (Integer id : ids) {
+                tasks.add(executor.submit(() -> {
+                    ready.countDown();
+                    selectionService.insertListOfServicesSelectedInAReservation(booked.getId(), List.of(new SelectServiceDTO(id)));
+                }));
+            }
+            try {
+                assertTrue(ready.await(5, TimeUnit.SECONDS));
+                for (Future<?> task : tasks) {
+                    assertThrows(TimeoutException.class, () -> task.get(250, TimeUnit.MILLISECONDS));
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new AssertionError(e);
+            }
+        });
+        for (Future<?> task : tasks) task.get(10, TimeUnit.SECONDS);
+        transaction.executeWithoutResult(status -> {
+            Reservation result = service.findById(booked.getId());
+            assertEquals(2, result.getServices().size());
+            assertEquals(0, new BigDecimal("2375").compareTo(result.getFinalPrice()));
+        });
     }
 
     private Future<Reservation> book(String username, Integer spaceId, CountDownLatch ready) {

@@ -1,12 +1,12 @@
 package com.utn.space.venueaapi.controllers;
 
-import com.utn.space.venueaapi.model.records.ReservationDTO;
+import com.utn.space.venueaapi.model.records.SelectServiceDTO;
+import jakarta.validation.Valid;
 import com.utn.space.venueaapi.model.records.ServiceSelectedDTO;
 import com.utn.space.venueaapi.service.ServiceSelectedService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
-import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -45,24 +45,9 @@ public class ServiceSelectedController {
     public void selectListOfServicesOnReservation(
             @PathVariable Integer idReservation,
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
-                    description = "Entra los datos obligatorios de la creacion de una nueva Reserva",
-                    required = true,
-                    content = @Content(
-                            schema = @Schema(
-                                    implementation = ReservationDTO.class),
-                            examples = @ExampleObject (
-                                    name = "Ejemplo",
-                                    value = """
-                                    {
-                                      "title":"Cumpleaños",
-                                      "description":"Cumpleaños de Cecilia",
-                                      "descriptionFrozen":"Globos inflables",
-                                      "idReservation":1,
-                                      "id_space":2}
-                                    """)
-                    )
-            )
-            @RequestBody List<ServiceSelectedDTO> servicesSelectedDTO){
+                    description = "IDs del catálogo. Precio y descripción se obtienen en el servidor.",
+                    content = @Content(examples = @ExampleObject(value = "[{\"idService\":1},{\"idService\":2}]")))
+            @Valid @RequestBody List<@Valid SelectServiceDTO> servicesSelectedDTO){
         service.insertListOfServicesSelectedInAReservation(idReservation, servicesSelectedDTO);
     }
 

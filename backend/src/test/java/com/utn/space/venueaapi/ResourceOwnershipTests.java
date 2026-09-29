@@ -41,6 +41,8 @@ class ResourceOwnershipTests {
     @Autowired ServiceSelectedRepository selectedServices;
     @Autowired NotificationRepository notifications;
     @Autowired CommentRepository comments;
+    @Autowired SpaceServiceItemRepository catalog;
+    SpaceServiceItem catalogItem;
     Consumer owner, client, outsider, admin;
     Space space, otherSpace;
     Reservation reservation;
@@ -57,6 +59,7 @@ class ResourceOwnershipTests {
         admin = consumer("ownership-admin", ERoles.ROLE_ADMIN);
         space = space(owner);
         otherSpace = space(outsider);
+        catalogItem = catalog.saveAndFlush(new SpaceServiceItem(null, "Extra", new BigDecimal("100"), true, space));
         reservation = new Reservation();
         reservation.setTitle("Original");
         reservation.setDescription("Reserva original");
@@ -66,7 +69,7 @@ class ResourceOwnershipTests {
         reservation.setUntilDate(reservation.getFromDate().plusHours(2));
         reservation.setCreatedAt(LocalDateTime.now().withNano(0));
         reservation.setStatus(ReservationStatus.TENTATIVE);
-        reservation.setFinalPrice(new BigDecimal("2000"));
+        reservation.setFinalPrice(new BigDecimal("2250"));
         reservation.setServices(new ArrayList<>());
         reservations.saveAndFlush(reservation);
         selectedService = selectedServices.saveAndFlush(new ServiceSelected(
@@ -345,8 +348,8 @@ class ResourceOwnershipTests {
 
     private String selectedServiceBody() {
         return """
-                [{"priceAtReservation":100,"descriptionFrozen":"Extra","idReservation":%d}]
-                """.formatted(reservation.getId());
+                [{"idService":%d}]
+                """.formatted(catalogItem.getId());
     }
 
     private String commentBody(Consumer claimedAuthor) {

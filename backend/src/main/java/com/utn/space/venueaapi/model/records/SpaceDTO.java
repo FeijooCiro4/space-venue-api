@@ -16,13 +16,12 @@ import java.util.List;
 
 @Schema(description = "DTO de Espacio")
 public record SpaceDTO(
-        @NotNull(groups = Update.class)
         @Schema(description = "Identificador único", example = "1")
         Integer idSpace,
 
-        @NotNull(groups = {CreateAdmin.class, Update.class})
+        @NotNull(groups = CreateAdmin.class)
         @Positive(groups = {CreateAdmin.class, Update.class})
-        @Schema(description = "Identificador único del dueño", example = "22")
+        @Schema(description = "ID del dueño. En edición puede omitirse y no permite transferir el espacio.", example = "22")
         Integer idConsumerOwner,
 
         @NotNull(groups = {Create.class, Update.class})
@@ -56,9 +55,9 @@ public record SpaceDTO(
         @Schema(description = "Tiempo entre alquileres")
         Integer bufferTime,
 
-        @Schema(description = "Un booleano para saber si esta activo")
+        @Schema(description = "Actividad. La edición conserva el valor almacenado.")
         Boolean active,
 
-        @Schema(description = "Lista de servicios")
+        @Schema(description = "Servicios para creación. En edición se conserva el catálogo; usar sus rutas específicas.")
         List<ServiceItemDTO> services
 ) {}

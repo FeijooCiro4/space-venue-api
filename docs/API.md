@@ -114,3 +114,17 @@ El pago se inicia con `POST /reservations/{id}/checkout` y se abre la URL `initP
 - `SpaceImageDTO` recibe `idSpace`, `fileName`, `urlImage`, `dateSend`; no existe un endpoint multipart de archivos. Preferir URLs de imágenes ya alojadas.
 
 La edición `PUT /reservations` requiere ser el cliente titular o ADMIN. Un cliente no puede cambiar el titular; el estado, la actividad y la fecha de creación se conservan desde la base. Los estados se cambian mediante sus operaciones específicas. Las notificaciones por ID requieren ser el destinatario o ADMIN. La edición de comentarios comprueba el autor almacenado, independientemente del `idConsumer` recibido.
+
+## Selección de servicios y edición de espacios
+
+Para `POST /api/servicesselected/insert/list/{idReservation}`, enviar una lista de IDs del
+catálogo: `[{"idService":1},{"idService":2}]`. El servidor obtiene precio y descripción del
+catálogo y valida que cada servicio esté activo y pertenezca al espacio reservado. El contrato
+anterior basado en precio/descripción ya no sirve para altas. GET mantiene `ServiceSelectedDTO`.
+Las altas y bajas recalculan el total conservando la porción de alquiler ya cotizada y se
+serializan mediante un bloqueo de la reserva; solo se admiten reservas editables.
+
+La edición de espacios conserva propietario, actividad, publicación y servicios. `idSpace`
+e `idConsumerOwner` son opcionales al editar, pero si se envían deben coincidir. Los campos
+`active`, `publicationDate` y `services` no se aplican en la edición; el catálogo tiene rutas
+propias. El acceso a la edición propia se verifica contra el dueño almacenado.

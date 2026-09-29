@@ -71,7 +71,6 @@ Los siguientes problemas existían antes de reorganizar el proyecto y requieren 
 | Estados de pago y reserva mezclados | `PaymentServiceImpl.processNotification`, `ReservationService` | Confirmación del anfitrión y pago aprobado usan `CONFIRMED`; revisar transiciones, validación de importe/moneda e idempotencia. |
 | Registro alternativo duplica hashing | `ConsumerController.createUser`, `CredentialService.saveCredential` | `/api/usuarios` codifica la contraseña dos veces. Usar `/api/auth/register` y unificar registro en una etapa posterior. |
 | Cambio de estado de usuario sin implementación | `ConsumerController.toggleUserStatus` | Responde éxito sin modificar datos y requiere `active`, que es obligatorio en la solicitud. |
-| Edición de espacios propios inconsistente | `SpaceDTO`, `SpaceService.modifyOwnedSpace` y `modifySpace` | El grupo Update exige owner, aunque el propietario se obtiene de la sesión; luego se recrea la entidad sin conservar claramente estado y relaciones. Diseñar DTO de edición específico y actualizar la entidad existente. |
 | Políticas sin datos iniciales | `CancellationPoliciesService`, `EPolicyType` | Crear un espacio exige que la política exista en MySQL. No hay seed/migración de políticas; definir valores reales antes de cargar catálogo. |
 | Reglas de disponibilidad pendientes fuera de la creación concurrente | `ReservationService.modify` y cambios de estado | Extender la comprobación de disponibilidad y el bloqueo por espacio a la edición y a transiciones que vuelvan a ocupar un horario. Revisar también duración cero e inactividad del espacio/servicios. |
 | Lecturas de notificaciones con efectos | `NotificationService.listAllByIdConsumerForConsumer` | Listar marca como vistas todas las notificaciones devueltas. Definir una operación de lectura sin mutación. |
@@ -97,3 +96,15 @@ cd backend
 ```
 
 Las pruebas Java cubren arranque, CORS, catálogo/OpenAPI, filtros, protección de contraseñas, ausencia del contrato retirado y regresión de reservas. `ResourceOwnershipTests` agrega 33 casos con JWT reales para accesos ajenos, titulares, dueños y administradores, incluyendo falsificación de IDs y cambios de estado por el PUT general. `AccountDeactivationTests` verifica login de cuentas activas e inactivas, baja propia de CLIENT/ADMIN, baja administrativa, rechazo de JWT anteriores y tokens de cuentas inexistentes. `JwtLifecycleTests` verifica clave compartida, sesiones distintas, revocación tras recrear el servicio, limpieza por vencimiento y rechazo de tokens inválidos. `ReservationConcurrencyTests` usa hilos y transacciones independientes para comprobar altas simultáneas, independencia entre espacios y rollback ante fallos de notificación. H2 no sustituye la validación con MySQL ni una compra real con Mercado Pago.
+
+## Correcciones de servicios y espacios
+
+`ServiceSelectedService` recibe `SelectServiceDTO` (ID del catálogo), congela precio y descripción
+desde `SpaceServiceItem` y actualiza selección y total en una transacción con bloqueo de la
+reserva. Alta, baja individual y baja completa mantienen la colección administrada; los
+borrados usan `orphanRemoval`. El DTO de lectura no cambia. No se modificó el esquema de pagos.
+
+`SpaceService.modifySpace` y `modifyOwnedSpace` cargan y refrescan la entidad bajo bloqueo,
+validan los datos y actualizan solo los campos editables. Se conservan propietario, actividad,
+publicación y servicios. En edición el propietario puede omitirse; un propietario distinto
+se rechaza incluso en la ruta administrativa. La ruta propia verifica además al usuario actual.

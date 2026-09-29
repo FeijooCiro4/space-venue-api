@@ -7,6 +7,9 @@ import com.utn.space.venueaapi.model.records.SpaceDTO;
 import com.utn.space.venueaapi.model.records.SpaceFilterDTO;
 import com.utn.space.venueaapi.repository.SpaceRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +19,8 @@ import java.util.Objects;
 
 @Service
 public class SpaceService {
+    @Autowired
+    private EntityManager entityManager;
     @Autowired
     SpaceRepository spaceRepository;
     @Autowired
@@ -43,8 +48,10 @@ public class SpaceService {
     }
 
     public Space findByIdForUpdate(Integer id) {
-        return spaceRepository.findByIdForUpdate(id)
+        Space space = spaceRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new IdNotFoundException("Space", id));
+        entityManager.refresh(space, LockModeType.PESSIMISTIC_WRITE);
+        return space;
     }
 
     public void deleteById(Integer id){
@@ -88,35 +95,45 @@ public class SpaceService {
 
 
     @Transactional(rollbackFor = Exception.class)
-    public void modifySpace(Integer id, SpaceDTO spaceDTO){
-        if(!spaceRepository.existsById(id)){
-            throw new IdNotFoundException("Space: ", id);
-        }
+    public void modifySpace(Integer id, SpaceDTO spaceDTO) {
+        Space space = findByIdForUpdate(id);
+        applyEditableDetails(space, spaceDTO);
+    }
 
-        if(spaceDTO.nameSpace().isBlank()){
-            throw new InvalidDataException("Por favor ingrese un nombre para el espacio");
+    private void applyEditableDetails(Space space, SpaceDTO dto) {
+        if (dto.idSpace() != null && !Objects.equals(dto.idSpace(), space.getIdSpace())) {
+            throw new InvalidDataException("El ID del cuerpo no coincide con el espacio a modificar.");
         }
-
-        if(spaceDTO.description().isBlank()){
-            throw new InvalidDataException("Por favor ingrese una descripcion para el espacio");
+        if (dto.idConsumerOwner() != null
+                && !Objects.equals(dto.idConsumerOwner(), space.getConsumerOwner().getIdConsumer())) {
+            throw new InvalidDataException("No se puede transferir el propietario mediante la edición del espacio.");
         }
-
-        if(spaceDTO.basePrice().compareTo(BigDecimal.ZERO) <= 0){
-            throw new InvalidDataException("Por favor ingrese un precio valido");
+        if (dto.nameSpace() == null || dto.nameSpace().isBlank()
+                || dto.description() == null || dto.description().isBlank()) {
+            throw new InvalidDataException("El nombre y la descripción del espacio son obligatorios.");
         }
-
-        Space spaceToInsert = new Space();
-        spaceToInsert.setIdSpace(id);
-        spaceToInsert.setConsumerOwner(consumerService.findById(spaceDTO.idConsumerOwner()));
-        spaceToInsert.setLocation(locationService.findByLongitudeAndLatitude(spaceDTO.location().longitude(), spaceDTO.location().latitude()));
-        spaceToInsert.setCancellationPolicies(cancellationPoliciesService.findByType(EPolicyType.valueOf(spaceDTO.cancellationPolicies())));
-        spaceToInsert.setNameSpace(spaceDTO.nameSpace());
-        spaceToInsert.setDescription(spaceDTO.description());
-        spaceToInsert.setBasePrice(spaceDTO.basePrice());
-        spaceToInsert.setPublicationDate(spaceDTO.publicationDate());
-        spaceToInsert.setBufferTime(spaceDTO.bufferTime());
-        
-        spaceRepository.save(spaceToInsert);
+        if (dto.basePrice() == null || dto.basePrice().signum() <= 0
+                || dto.bufferTime() == null || dto.bufferTime() <= 0) {
+            throw new InvalidDataException("El precio y el tiempo entre alquileres deben ser positivos.");
+        }
+        if (dto.location() == null || dto.location().longitude() == null || dto.location().latitude() == null) {
+            throw new InvalidDataException("La ubicación del espacio es obligatoria.");
+        }
+        final EPolicyType policy;
+        try {
+            policy = EPolicyType.valueOf(dto.cancellationPolicies());
+        } catch (IllegalArgumentException | NullPointerException e) {
+            throw new InvalidDataException("La política de cancelación no es válida.");
+        }
+        Location location = locationService.findByLongitudeAndLatitude(dto.location().longitude(), dto.location().latitude());
+        CancellationPolicies cancellation = cancellationPoliciesService.findByType(policy);
+        space.setNameSpace(dto.nameSpace());
+        space.setDescription(dto.description());
+        space.setBasePrice(dto.basePrice());
+        space.setBufferTime(dto.bufferTime());
+        space.setLocation(location);
+        space.setCancellationPolicies(cancellation);
+        // Conservar propietario, actividad, publicación y catálogo. Los servicios tienen sus propias rutas.
     }
 
     //Este metodo maneja solo espacios activos
@@ -274,29 +291,13 @@ public class SpaceService {
     }
 
     @Transactional
-    public void modifyOwnedSpace(Integer id, SpaceDTO spaceDTO){
+    public void modifyOwnedSpace(Integer id, SpaceDTO spaceDTO) {
         Integer loggedOwnerId = consumerService.getLoggedConsumerId();
-        Space spaceToModify = findById(id);
-
-        if(!Objects.equals(spaceToModify.getConsumerOwner().getIdConsumer(), loggedOwnerId)){
-            throw new InvalidDataException("Debe ser duenio de el espacio que desea modificar");
+        Space space = findByIdForUpdate(id);
+        if (!Objects.equals(space.getConsumerOwner().getIdConsumer(), loggedOwnerId)) {
+            throw new AccessDeniedException("Debe ser dueño del espacio que desea modificar.");
         }
-
-        SpaceDTO spaceDTOAux = new SpaceDTO(
-                id,
-                spaceDTO.idConsumerOwner(),
-                spaceDTO.location(),
-                spaceDTO.cancellationPolicies(),
-                spaceDTO.nameSpace(),
-                spaceDTO.description(),
-                spaceDTO.basePrice(),
-                spaceDTO.publicationDate(),
-                spaceDTO.bufferTime(),
-                false, //De base cualquier modificacion hace que el espacio requiera una nueva verificacion
-                spaceDTO.services()
-        );
-
-        modifySpace(id, spaceDTOAux);
+        applyEditableDetails(space, spaceDTO);
     }
 
 }

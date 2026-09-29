@@ -220,8 +220,8 @@ Los métodos de cambio de estado delegan las reglas en el servicio. Sus anotacio
 | Operación | Qué hace |
 | --- | --- |
 | `GET /api/servicesselected/reservation/{idReservation}` | Devuelve los adicionales seleccionados de una reserva como lista de `ServiceSelectedDTO`. |
-| `POST /api/servicesselected/insert/list/{idReservation}` | Recibe una lista de `ServiceSelectedDTO` para asociarla a la reserva indicada. |
-| `DELETE /api/servicesselected/delete/{id}` | Elimina un registro de selección por su identificador. |
+| `POST /api/servicesselected/insert/list/{idReservation}` | Recibe una lista de `SelectServiceDTO` (`idService` del catálogo), congela sus datos y recalcula el total de la reserva. |
+| `DELETE /api/servicesselected/delete/{id}` | Elimina un registro de selección por su identificador y recalcula el total de la reserva. |
 
 **Con quién trabaja:** `ServiceSelectedService`. Entre los datos de selección aparecen `descriptionFrozen` y `priceAtReservation`: descripción y precio registrados para esa reserva.
 
