@@ -86,7 +86,7 @@ El recorrido es una simplificación: la seguridad también puede comprobar permi
 | `POST /api/auth/login` | Comprueba usuario y contraseña mediante `AuthenticationManager` y genera un JWT con `JwtUtil`. |
 | `POST /api/auth/logout` | Toma el token del encabezado y utiliza `TokenBlacklistService` para invalidarlo durante el tiempo de vigencia restante. |
 
-**Con quién trabaja:** `CredentialService` y `ConsumerService` para los datos de la cuenta; `PasswordEncoder` para transformar la contraseña en un hash; `AuthenticationManager`, `JwtUtil` y `TokenBlacklistService` para el acceso.
+**Con quién trabaja:** `RegistrationService` para registrar credencial y perfil en una transacción; `ConsumerService`, `AuthenticationManager`, `JwtUtil` y `TokenBlacklistService` para el acceso. El hashing ocurre solo en `CredentialService.createCredential`.
 
 **Ejemplo:** Ana registra una cuenta, inicia sesión y recibe un token. En sus siguientes solicitudes incluye ese token para identificarse. Al cerrar sesión, el token se incorpora a la lista de tokens invalidados.
 
@@ -100,7 +100,7 @@ El recorrido es una simplificación: la seguridad también puede comprobar permi
 
 | Operación | Qué hace |
 | --- | --- |
-| `POST /api/usuarios` | Ofrece otra vía de creación de cuenta: recibe un `Credential` y crea un perfil con sus campos personales vacíos. |
+| `POST /api/usuarios` | Ofrece otra vía de creación de cuenta: recibe `CredentialRegistrationDTO` (username y password) y delega en el mismo registro, creando el perfil con datos personales vacíos. |
 | `GET /api/usuarios` | Lista usuarios para administración. |
 | `GET /api/usuarios/{id}` | Consulta un usuario por identificador. |
 | `GET` o `POST /api/usuarios/byfields` | Busca usuarios con un `ConsumerFilterDTO` enviado en el cuerpo. |
@@ -109,7 +109,7 @@ El recorrido es una simplificación: la seguridad también puede comprobar permi
 | `PUT /api/usuario` | Actualiza los datos personales del usuario autenticado. |
 | `DELETE /api/usuario` | Solicita la baja lógica de la cuenta autenticada. |
 
-**Con quién trabaja:** principalmente `ConsumerService`; también `CredentialService` y `PasswordEncoder` en la creación de cuentas.
+**Con quién trabaja:** `ConsumerService` para perfiles y `RegistrationService` para la creación de cuentas.
 
 **Ejemplo:** Ana quiere cambiar su teléfono. Envía el nuevo dato a `PUT /api/usuario`. El controlador obtiene su identidad de `Principal`, busca su perfil, comprueba duplicados de correo o teléfono cuando corresponde y guarda los cambios.
 
@@ -137,7 +137,7 @@ El recorrido es una simplificación: la seguridad también puede comprobar permi
 | `POST /api/spaces` | Crea un espacio desde administración. |
 | `PUT` o `DELETE /api/spaces/{id}` | Modifica o solicita la baja de un espacio desde administración. |
 
-**Con quién trabaja:** `SpaceService`. Recibe `SpaceDTO` para escritura y `SpaceFilterDTO` para búsquedas; devuelve espacios, listas, mensajes o el identificador creado según la operación.
+**Con quién trabaja:** `SpaceService`. Recibe `SpaceDTO` para escritura y `SpaceFilterDTO` para búsquedas; devuelve `SpaceResponseDTO`, listas de ese DTO, mensajes o el identificador creado según la operación. `PublicSpaceMapper` limita los datos públicos del propietario a ID, nombre y apellido.
 
 **Ejemplo:** una persona publica un salón mediante `/ownedspace`. La respuesta incluye `idSpace`, que permite después asociarle imágenes y servicios adicionales.
 
@@ -158,7 +158,7 @@ El recorrido es una simplificación: la seguridad también puede comprobar permi
 | `PUT /api/spaceimages/{id}` | Modifica los datos de una imagen. |
 | `DELETE /api/spaceimages/{id}` | Delega la eliminación del registro al servicio. |
 
-**Con quién trabaja:** `SpaceImageService`. Las consultas devuelven entidades `SpaceImage`; las operaciones de escritura no incluyen un cuerpo de respuesta.
+**Con quién trabaja:** `SpaceImageService`. Las consultas devuelven `SpaceImageResponseDTO` con un `SpaceResponseDTO` anidado sin contacto ni credenciales del propietario; las operaciones de escritura no incluyen un cuerpo de respuesta.
 
 **Ejemplo:** al espacio 7 se le asocia una foto indicando su URL, nombre de archivo y los demás datos del DTO. Luego `/byspaceid/7` permite recuperar las imágenes asociadas a ese espacio.
 

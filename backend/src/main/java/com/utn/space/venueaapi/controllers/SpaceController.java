@@ -5,7 +5,8 @@ import com.utn.space.venueaapi.model.flags.CreateAdmin;
 import com.utn.space.venueaapi.model.flags.Update;
 import com.utn.space.venueaapi.model.flags.UpdateAdmin;
 import com.utn.space.venueaapi.model.records.SpaceDTO;
-import com.utn.space.venueaapi.model.Space;
+import com.utn.space.venueaapi.model.records.SpaceResponseDTO;
+import com.utn.space.venueaapi.service.mappers.PublicSpaceMapper;
 import com.utn.space.venueaapi.model.records.SpaceFilterDTO;
 import com.utn.space.venueaapi.service.SpaceService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -35,8 +36,8 @@ public class SpaceController {
     @Operation(
             summary = "Busca TODOS los Espacios, incluidos los inactivos."
     )
-    public ResponseEntity<List<Space>> listSpaces(){
-        return ResponseEntity.ok(spaceService.findAll());
+    public ResponseEntity<List<SpaceResponseDTO>> listSpaces(){
+        return ResponseEntity.ok(spaceService.findAll().stream().map(PublicSpaceMapper::toDto).toList());
     }
 
     //Este listado no incluye espacios inactivos
@@ -44,8 +45,8 @@ public class SpaceController {
     @Operation(
             summary = "Busca TODOS los Espacios disponibles."
     )
-    public ResponseEntity<List<Space>> listActiveSpaces(){
-        return ResponseEntity.ok(spaceService.findAllActives());
+    public ResponseEntity<List<SpaceResponseDTO>> listActiveSpaces(){
+        return ResponseEntity.ok(spaceService.findAllActives().stream().map(PublicSpaceMapper::toDto).toList());
     }
 
     //Muestro todos los espacios de un owner, incluyendo inactivos
@@ -54,16 +55,16 @@ public class SpaceController {
     @Operation(
             summary = "Busca TODOS los Espacios del Usuario."
     )
-    public ResponseEntity<List<Space>> findAllForOwner(){
-        return ResponseEntity.ok(spaceService.findAllForOwner());
+    public ResponseEntity<List<SpaceResponseDTO>> findAllForOwner(){
+        return ResponseEntity.ok(spaceService.findAllForOwner().stream().map(PublicSpaceMapper::toDto).toList());
     }
 
     @GetMapping("/{id}")
     @Operation(
             summary = "Busca un Espacio por ID."
     )
-    public ResponseEntity<Space> findSpaceById(@PathVariable Integer id){
-        return ResponseEntity.ok(spaceService.findById(id));
+    public ResponseEntity<SpaceResponseDTO> findSpaceById(@PathVariable Integer id){
+        return ResponseEntity.ok(PublicSpaceMapper.toDto(spaceService.findById(id)));
     }
 
     @DeleteMapping("/{id}")
@@ -219,7 +220,7 @@ public class SpaceController {
             summary = "Busca TODOS los Espacios Filtrados.",
             description = "Devuelve una lista Completa de Espacios Disponibles."
     )
-    public ResponseEntity<List<Space>> findAllByFields(
+    public ResponseEntity<List<SpaceResponseDTO>> findAllByFields(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "Entra los datos obligatorios de la creación de un nuevo Espacio",
                     required = true,
@@ -245,7 +246,7 @@ public class SpaceController {
                     )
             )
             @Validated(Update.class)@RequestBody SpaceFilterDTO spaceFilterDTO){
-        return ResponseEntity.ok(spaceService.findAllByFields(spaceFilterDTO));
+        return ResponseEntity.ok(spaceService.findAllByFields(spaceFilterDTO).stream().map(PublicSpaceMapper::toDto).toList());
     }
 
     //Este metodo si va a mostrar los espacios no disponibles
@@ -255,8 +256,8 @@ public class SpaceController {
             summary = "Busca TODOS los Espacios Filtrados.",
             description = "Busca TODOS los Espacios Filtrados incluido los inactivos."
     )
-    public ResponseEntity<List<Space>> findAllByFieldsWithInactives(@RequestBody SpaceFilterDTO spaceFilterDTO){
-        return ResponseEntity.ok(spaceService.findAllByFieldsWithInactives(spaceFilterDTO));
+    public ResponseEntity<List<SpaceResponseDTO>> findAllByFieldsWithInactives(@RequestBody SpaceFilterDTO spaceFilterDTO){
+        return ResponseEntity.ok(spaceService.findAllByFieldsWithInactives(spaceFilterDTO).stream().map(PublicSpaceMapper::toDto).toList());
     }
 
     @RequestMapping(value = "/ownedspaces/byfields", method = {RequestMethod.GET, RequestMethod.POST})
@@ -264,8 +265,8 @@ public class SpaceController {
     @Operation(
             summary = "Busca TODOS los Espacios filtrados de un dueño."
     )
-    public ResponseEntity<List<Space>> findAllOwnedSpacesbyFields(@RequestBody SpaceFilterDTO spaceFilterDTO){
-        return ResponseEntity.ok(spaceService.findAllByFieldsForOwner(spaceFilterDTO));
+    public ResponseEntity<List<SpaceResponseDTO>> findAllOwnedSpacesbyFields(@RequestBody SpaceFilterDTO spaceFilterDTO){
+        return ResponseEntity.ok(spaceService.findAllByFieldsForOwner(spaceFilterDTO).stream().map(PublicSpaceMapper::toDto).toList());
     }
 
     @DeleteMapping("/ownedspace/{id}")

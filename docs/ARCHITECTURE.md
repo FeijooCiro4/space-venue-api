@@ -69,12 +69,11 @@ Los siguientes problemas existían antes de reorganizar el proyecto y requieren 
 | --- | --- | --- |
 | Webhook de pagos incompleto | `PaymentWebhookController`, `SecurityConfig`, `PaymentServiceImpl` | La ruta exige autenticación de la aplicación y contiene una simulación que puede confirmar reservas. Separar simulación de producción, verificar autenticidad del proveedor y después configurar acceso al webhook. No se abrió públicamente esa ruta. |
 | Estados de pago y reserva mezclados | `PaymentServiceImpl.processNotification`, `ReservationService` | Confirmación del anfitrión y pago aprobado usan `CONFIRMED`; revisar transiciones, validación de importe/moneda e idempotencia. |
-| Registro alternativo duplica hashing | `ConsumerController.createUser`, `CredentialService.saveCredential` | `/api/usuarios` codifica la contraseña dos veces. Usar `/api/auth/register` y unificar registro en una etapa posterior. |
 | Cambio de estado de usuario sin implementación | `ConsumerController.toggleUserStatus` | Responde éxito sin modificar datos y requiere `active`, que es obligatorio en la solicitud. |
 | Políticas sin datos iniciales | `CancellationPoliciesService`, `EPolicyType` | Crear un espacio exige que la política exista en MySQL. No hay seed/migración de políticas; definir valores reales antes de cargar catálogo. |
 | Reglas de disponibilidad pendientes fuera de la creación concurrente | `ReservationService.modify` y cambios de estado | Extender la comprobación de disponibilidad y el bloqueo por espacio a la edición y a transiciones que vuelvan a ocupar un horario. Revisar también duración cero e inactividad del espacio/servicios. |
 | Lecturas de notificaciones con efectos | `NotificationService.listAllByIdConsumerForConsumer` | Listar marca como vistas todas las notificaciones devueltas. Definir una operación de lectura sin mutación. |
-| Contrato expone entidades y errores heterogéneos | Controladores y `GlobalExceptionHandler` | Aún hay datos personales anidados, texto plano, mapas y entidades completas. Incorporar DTO de salida y un formato de errores estable con una transición compatible. |
+| Contratos pendientes fuera del catálogo | Controladores y `GlobalExceptionHandler` | Espacios e imágenes ya usan DTO de salida sin datos de contacto ni credenciales del propietario. Otras respuestas autorizadas aún mezclan entidades, texto y mapas; queda pendiente uniformar esos contratos y errores. |
 | Validaciones incompletas | `AuthController.register`, DTO y grupos Create/Update | Algunas restricciones no se invocan o usan grupos inadecuados. Validar todos los payloads en el servidor. |
 | Unidad de separación entre reservas | `ReservationService.isSpaceAvailableBetweenDates` | Documentar y validar `bufferTime` en minutos enteros, conforme a `plusMinutes`. |
 | Almacenamiento de imágenes | `SpaceImage` | La columna de URL no declara almacenamiento largo y no existe un servicio de archivos. Definir alojamiento y límites de tamaño. |
@@ -108,3 +107,18 @@ borrados usan `orphanRemoval`. El DTO de lectura no cambia. No se modificó el e
 validan los datos y actualizan solo los campos editables. Se conservan propietario, actividad,
 publicación y servicios. En edición el propietario puede omitirse; un propietario distinto
 se rechaza incluso en la ruta administrativa. La ruta propia verifica además al usuario actual.
+
+## Privacidad pública y registro unificado
+
+`PublicSpaceMapper` define una lista explícita de campos de lectura para espacios e imágenes.
+`SpaceResponseDTO.PublicOwner` solo contiene ID, nombre y apellido. Los DTO anidados no contienen
+entidades, por lo que agregar propiedades al modelo persistente no amplía el catálogo público.
+La relación `Space.consumerOwner` también excluye contacto y credenciales cuando se serializa
+dentro de otras respuestas, como reservas. El perfil privado conserva sus datos de contacto.
+
+`AuthController.register` y `ConsumerController.createUser` delegan en `RegistrationService`.
+La única llamada a BCrypt para altas está en `CredentialService.createCredential`. Se persiste
+un Consumer nuevo con su credencial nueva en cascada dentro de una transacción; no se hace merge
+de una credencial recibida del cliente. La clave única de username impide sobrescribir cuentas
+en carreras de registro. Las pruebas verifican login por ambas rutas, reversión completa y carreras.
+No hay migración de esquema ni reparación automática de contraseñas previamente codificadas dos veces.

@@ -2,11 +2,13 @@ package com.utn.space.venueaapi.controllers;
 
 import com.utn.space.venueaapi.model.Consumer;
 import com.utn.space.venueaapi.model.Credential;
-import com.utn.space.venueaapi.model.ERoles;
 import com.utn.space.venueaapi.model.records.ConsumerFilterDTO;
 
 import com.utn.space.venueaapi.service.ConsumerService;
-import com.utn.space.venueaapi.service.CredentialService;
+import com.utn.space.venueaapi.service.RegistrationService;
+import com.utn.space.venueaapi.model.records.CredentialRegistrationDTO;
+import com.utn.space.venueaapi.model.records.RegistroDTO;
+import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -17,7 +19,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
@@ -34,9 +35,7 @@ public class ConsumerController {
     private final ConsumerService consumerService;
 
     @Autowired
-    private final CredentialService credentialService;
-    @Autowired
-    private final PasswordEncoder passwordEncoder;
+    private final RegistrationService registrationService;
 
     @PostMapping("/usuarios")
     @Operation(
@@ -45,53 +44,22 @@ public class ConsumerController {
     )
     public ResponseEntity<String> createUser(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
-                    description = "Entra los datos obligatorios de la creacion de una nueva Reserva",
+                    description = "Usuario y contraseña sin codificar",
                     required = true,
                     content = @Content(
                             schema = @Schema(
-                                    implementation = Credential.class),
+                                    implementation = CredentialRegistrationDTO.class),
                             examples = @ExampleObject(
                                     name = "Ejemplo",
                                     value = """
                                     {
                                       "username":"Pepe",
-                                      "isActive": true,
-                                      "passwordHash":"fatiga"}
+                                      "password":"contraseña-de-ejemplo"}
                                     """)
                     )
             )
-            @RequestBody Credential credential) {
-        // Se encripta la contraseña recibida y se asigna de nuevo al objeto
-        String passwordEncriptada = passwordEncoder.encode(credential.getPassword());
-        credential.setPassword(passwordEncriptada);
-
-        // Validar duplicados
-        if (credentialService.existsByUsername(credential.getUsername())) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("{\"error\": \"El nombre de usuario ya se encuentra registrado.\"}");
-        }
-
-        // Configurar la credencial de forma explícita
-        credential.setRol(ERoles.ROLE_CLIENT);
-        credential.setIsActive(Boolean.TRUE);
-
-        // Guardar la credencial en su repositorio
-        credentialService.saveCredential(credential);
-
-        // Forzar la asignación del ID en el objeto Consumer
-        Consumer nuevoConsumer = new Consumer();
-
-        // Vincular la credencial que ya tiene el ID asignado y en limpio
-        nuevoConsumer.setCredentials(credential);
-
-        // Inicializar las cadenas vacías obligatorias
-        nuevoConsumer.setFirstname("");
-        nuevoConsumer.setLastname("");
-        nuevoConsumer.setEmail("");
-        nuevoConsumer.setPhone("");
-
-        // Guardar y flushear en la tabla 'consumers'
-        consumerService.saveConsumer(nuevoConsumer);
+            @Valid @RequestBody CredentialRegistrationDTO dto) {
+        registrationService.register(new RegistroDTO("", "", "", "", dto.username(), dto.password()));
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body("{\"mensaje\": \"Usuario creado exitosamente\"}");

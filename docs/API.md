@@ -107,7 +107,7 @@ El pago se inicia con `POST /reservations/{id}/checkout` y se abre la URL `initP
 
 ## Formatos de respuesta
 
-- Las listas de espacios y reservas devuelven entidades con objetos anidados (`consumerOwner`, `location`, `space`, `consumer`, `services`). No suponer que todas las respuestas usan solo IDs.
+- Espacios e imágenes devuelven DTO con objetos anidados. `consumerOwner` solo contiene `idConsumer`, `firstname` y `lastname`; no expone contacto ni credenciales. Las reservas conservan su estructura anidada, con la misma exclusión de datos privados del propietario del espacio.
 - Los hashes de contraseñas ya no se incluyen en respuestas.
 - Éxitos y errores pueden ser JSON, texto plano o un cuerpo vacío. Revisar el estado HTTP y admitir esos formatos.
 - Notificaciones incluyen `idNotification`/`id` e `isSeen`/`seen` como alias; `createdAt` es epoch UTC en milisegundos. Listarlas marca las devueltas como vistas.
@@ -128,3 +128,17 @@ La edición de espacios conserva propietario, actividad, publicación y servicio
 e `idConsumerOwner` son opcionales al editar, pero si se envían deben coincidir. Los campos
 `active`, `publicationDate` y `services` no se aplican en la edición; el catálogo tiene rutas
 propias. El acceso a la edición propia se verifica contra el dueño almacenado.
+
+## Privacidad y registro
+
+Los endpoints de espacios (incluidos filtros, listados propios y administrativos) responden con
+`SpaceResponseDTO`. Las imágenes usan `SpaceImageResponseDTO`, con `space` convertido al mismo
+DTO público. Se conservan datos descriptivos, precio, ubicación, política y servicios. El dueño
+se representa exclusivamente mediante `consumerOwner: {idConsumer, firstname, lastname}`.
+El email, teléfono y datos de autenticación deben obtenerse únicamente mediante las operaciones
+de perfil autorizadas; ya no forman parte del catálogo.
+
+`POST /usuarios` continúa admitiendo `{"username":"ana","password":"contraseña-original"}`
+y creando un perfil vacío. Comparte con `/auth/register` el flujo transaccional de registro,
+con un solo hashing y rol CLIENT asignado por el servidor. No se deben enviar hashes en `password`.
+Las altas correctas devuelven 201; credenciales vacías y usernames duplicados devuelven 400.

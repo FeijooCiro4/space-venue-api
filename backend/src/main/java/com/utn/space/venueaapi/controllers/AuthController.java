@@ -1,11 +1,9 @@
 package com.utn.space.venueaapi.controllers;
 
 import com.utn.space.venueaapi.model.Consumer;
-import com.utn.space.venueaapi.model.Credential;
-import com.utn.space.venueaapi.model.ERoles;
 import com.utn.space.venueaapi.security.JwtUtil;
 import com.utn.space.venueaapi.service.ConsumerService;
-import com.utn.space.venueaapi.service.CredentialService;
+import com.utn.space.venueaapi.service.RegistrationService;
 import com.utn.space.venueaapi.service.TokenBlacklistService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.AllArgsConstructor;
@@ -15,7 +13,6 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,8 +22,7 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
-    private final PasswordEncoder passwordEncoder;
-    private final CredentialService credentialService;
+    private final RegistrationService registrationService;
     private final ConsumerService consumerService;
 
     @Autowired
@@ -76,36 +72,7 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<String> register(@RequestBody com.utn.space.venueaapi.model.records.RegistroDTO dto) {
 
-        // Validar que no vengan datos vacíos esenciales (usando los métodos del record)
-        if (dto.username() == null || dto.username().trim().isEmpty() ||
-                dto.password() == null || dto.password().trim().isEmpty()) {
-            return ResponseEntity.badRequest().body("Faltan los datos de usuario o contraseña");
-        }
-
-        // Validar si el usuario ya existe
-        if (credentialService.existsByUsername(dto.username())) {
-            return ResponseEntity.badRequest().body("El nombre de usuario ya está en uso");
-        }
-
-        // Se crea la Credencial limpia accediendo con dto.username() y dto.password()
-        Credential credential = new Credential();
-        credential.setUsername(dto.username());
-        credential.setPassword(passwordEncoder.encode(dto.password())); // Encriptamos
-        credential.setIsActive(true);
-        credential.setRol(ERoles.ROLE_CLIENT);
-
-        // Se crea el Consumer con el resto de los componentes del record
-        Consumer consumer = new Consumer();
-        consumer.setFirstname(dto.firstname());
-        consumer.setLastname(dto.lastname());
-        consumer.setEmail(dto.email());
-        consumer.setPhone(dto.phone());
-
-        // Se vincula la credencial al consumidor
-        consumer.setCredentials(credential);
-
-        // Se guarda en cascada a través del service
-        consumerService.saveConsumer(consumer);
+        registrationService.register(dto);
 
         return ResponseEntity.status(201).body("Usuario y perfil registrados con éxito");
     }

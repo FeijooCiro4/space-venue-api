@@ -41,14 +41,14 @@ Una denegación produce `AccessDeniedException` y HTTP 403. Para un usuario no a
 | Llamado y acceso | Recorrido y resultado | Objetos de model | Excepciones / errores |
 | --- | --- | --- | --- |
 | `POST /auth/login` · Público | `login` → `AuthenticationManager` → `CustomUserDetailsService.loadUserByUsername` → `CredentialRepository.findByUsername`; luego `ConsumerService.findByCredentialsUsername` → `ConsumerRepository.findByUsername` → `JwtUtil.generarToken`. Devuelve el texto `Bearer <token>`. | `Credential`, `Consumer`, `ERoles`; entrada: mapa de username/password. | `UsernameNotFoundException` en la carga del usuario; `BadCredentialsException` o `DisabledException` de autenticación, capturadas como 401; `NameNotFoundException` si falta el perfil. |
-| `POST /auth/register` · Público | `register` → `CredentialService.existsByUsername` → `CredentialRepository.existsByUsername`; crea credencial y perfil → `ConsumerService.saveConsumer` → `ConsumerRepository.saveAndFlush`, con credencial en cascada. No emite JWT. | `RegistroDTO`, `Credential`, `Consumer`, `ERoles.ROLE_CLIENT`. | Sin excepción de negocio explícita; devuelve 400 directamente si faltan username/password o el username ya existe. |
+| `POST /auth/register` · Público | `RegistrationService.register` → comprueba username → `CredentialService.createCredential` aplica BCrypt una vez → `ConsumerRepository.saveAndFlush` persiste credencial y perfil en una transacción. No emite JWT. | `RegistroDTO`, `Consumer`, `Credential` con rol CLIENT. | `InvalidDataException` (400) por credenciales vacías, username repetido o conflicto de persistencia. |
 | `POST /auth/logout` · Ruta pública; necesita Bearer para cerrar sesión | `logout` → `TokenBlacklistService.blacklistToken` → `JwtUtil.extraerClaims` → `RevokedTokenRepository.save`. Guarda la huella SHA-256 y la fecha de vencimiento exacta. | `RevokedToken`; trabaja con el JWT. | Devuelve 400 si no recibe cabecera Bearer. Un token revocado, inválido o expirado es rechazado antes por el filtro con 401. |
 
 ## Usuarios y perfil — `ConsumerController`
 
 | Llamado y acceso | Recorrido y resultado | Objetos de model | Excepciones / errores |
 | --- | --- | --- | --- |
-| `POST /usuarios` · Público | `createUser` → `CredentialService.existsByUsername/saveCredential` → `CredentialRepository.existsByUsername/save`; después `ConsumerService.saveConsumer` → `ConsumerRepository.saveAndFlush`. Crea un perfil con datos personales vacíos. | `Credential`, `Consumer`, `ERoles.ROLE_CLIENT`. | `IllegalArgumentException` por contraseña inválida; username repetido devuelve 400 directamente. |
+| `POST /usuarios` · Público | `createUser` adapta username/password a un perfil vacío → `RegistrationService.register`, igual que `/auth/register`. | `CredentialRegistrationDTO`, `RegistroDTO`, `Consumer`, `Credential`. | Validación DTO; `InvalidDataException` (400). |
 | `GET /usuarios` · ADMIN | `listAllUsers` → `ConsumerService.findAll` → `ConsumerRepository.findAll`. | `Consumer`, `Credential`. | — |
 | `GET /usuarios/{id}` · Perfil propio o ADMIN | `listById` → `ConsumerService.findById` → `ConsumerRepository.findById`. | `Consumer`, `Credential`. | `IdNotFoundException`. |
 | `GET /usuarios/byfields` y `POST /usuarios/byfields` · ADMIN | `findAllByFields` → `ConsumerService.findAllByfields` → `ConsumerRepository.findAllByFilters`. Ambos reciben filtros en el cuerpo. | `ConsumerFilterDTO`, `Consumer`, `Credential`. | — |
@@ -57,7 +57,7 @@ Una denegación produce `AccessDeniedException` y HTTP 403. Para un usuario no a
 | `PUT /usuario` · JWT | `updateUser` toma el username del principal JWT → `ConsumerService.findByUsername`, `existByEmail`, `existsByPhone`, `updateUser` → `ConsumerRepository.findByUsername/existsByEmail/existsByPhone/existsById/save`. | `ConsumerFilterDTO`, `Consumer`, `Credential`. | `NameNotFoundException`, `IdNotFoundException`; `RuntimeException` si email o teléfono ya están usados. |
 | `DELETE /usuario` · JWT | `deleteUser` toma el username del principal JWT → `ConsumerService.deleteUserLogically` → `ConsumerRepository.findByUsername/save`. Desactiva la credencial del usuario: bloquea nuevos logins y el uso de JWT anteriores en las siguientes solicitudes. | `Consumer`, `Credential`. | `RuntimeException` si no encuentra usuario o credenciales. |
 
-El registro alternativo `POST /usuarios` aplica hashing de contraseña en el controlador y nuevamente en el servicio. El registro principal es `POST /auth/register`.
+Ambas rutas de registro comparten una transacción y un solo hashing. Se mantienen sus respuestas 201; los datos de rol y actividad se fijan en el servidor.
 
 ## Espacios — `SpaceController`
 
@@ -83,6 +83,8 @@ Los filtros verifican los IDs opcionales mediante `ConsumerService.existsById` �
 
 La edición conserva la entidad y sus relaciones. El propietario es opcional en el DTO de edición; si se envía otro, se rechaza. Los cambios de catálogo usan sus rutas específicas.
 
+Las lecturas de espacios de la tabla anterior se convierten con `PublicSpaceMapper.toDto` a `SpaceResponseDTO`. Ninguna devuelve la entidad directamente. `consumerOwner` solo contiene ID, nombre y apellido.
+
 ## Imágenes — `SpaceImageController`
 
 Se guardan datos y URL de la imagen; no se sube un archivo binario. Las escrituras requieren JWT y el controlador comprueba al dueño del espacio o el rol ADMIN. Al editar se comprueba tanto la imagen existente como el espacio de destino.
@@ -95,6 +97,8 @@ Se guardan datos y URL de la imagen; no se sube un archivo binario. Las escritur
 | `POST /spaceimages` · Dueño o ADMIN | `insertSpace` → `SpaceImageService.insertSpaceImage` → `SpaceService.findById` → `SpaceRepository.findById` → `SpaceImageRepository.save`. | `SpaceImageDTO`, `SpaceImage`, `Space`. | Validación DTO; `InvalidDataException`, `IdNotFoundException`. |
 | `PUT /spaceimages/{id}` · Dueño o ADMIN | `modifySpaceImage` → `SpaceImageService.modifySpaceImage` → `SpaceImageRepository.existsById`; resuelve espacio con `SpaceService.findById` → `SpaceRepository.findById` → `SpaceImageRepository.save`. | `SpaceImageDTO`, `SpaceImage`, `Space`. | Validación DTO; `IdNotFoundException`, `InvalidDataException`. |
 | `DELETE /spaceimages/{id}` · Dueño o ADMIN | `deleteSapceImageById` → `SpaceImageService.deleteById` → `SpaceImageRepository.existsById/deleteById`. Borrado físico. | `SpaceImage` como registro eliminado. | `IdNotFoundException`. |
+
+Las lecturas de imágenes se convierten con `PublicSpaceMapper.toDto` a `SpaceImageResponseDTO`, incluido un DTO seguro para el espacio anidado.
 
 ## Servicios del espacio — `SpaceServiceItemController`
 

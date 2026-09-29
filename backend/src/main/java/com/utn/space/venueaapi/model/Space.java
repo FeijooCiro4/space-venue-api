@@ -1,6 +1,7 @@
 package com.utn.space.venueaapi.model;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.utn.space.venueaapi.model.flags.Create;
 import com.utn.space.venueaapi.model.flags.Update;
 import jakarta.persistence.*;
@@ -27,6 +28,8 @@ public class Space {
 
     @ManyToOne
     @JoinColumn(name = "idConsumerOwner")
+    // Defensa para otras respuestas que todavía incluyen Space (por ejemplo reservas).
+    @JsonIgnoreProperties({"email", "phone", "credentials"})
     private Consumer consumerOwner;
 
     @ManyToOne(cascade = CascadeType.PERSIST)

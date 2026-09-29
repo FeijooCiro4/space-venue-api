@@ -1,6 +1,8 @@
 package com.utn.space.venueaapi.service;
 
 import com.utn.space.venueaapi.model.Credential;
+import com.utn.space.venueaapi.model.ERoles;
+import com.utn.space.venueaapi.exceptions.InvalidDataException;
 import com.utn.space.venueaapi.repository.CredentialRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -25,18 +27,17 @@ public class CredentialService {
         return credentialRepository.existsByUsername(username);
     }
 
-    //Registra o actualiza una credencial aplicando algoritmos de hashing delegados
-    public void saveCredential(Credential credential) {
-        if (credential.getPassword() == null || credential.getPassword().isEmpty()) {
-            throw new IllegalArgumentException("La contraseña de la credencial no puede ser nula o vacía.");
+    /** Construye una credencial nueva desde una contraseña sin codificar; el registro la persiste en cascada. */
+    public Credential createCredential(String username, String rawPassword) {
+        if (username == null || username.isBlank() || rawPassword == null || rawPassword.isBlank()) {
+            throw new InvalidDataException("Faltan los datos de usuario o contraseña.");
         }
-
-        String securedPassword = passwordEncoder.encode(credential.getPassword());
-        credential.setPassword(securedPassword);
-
+        Credential credential = new Credential();
+        credential.setUsername(username);
+        credential.setPassword(passwordEncoder.encode(rawPassword));
         credential.setIsActive(true);
-
-        credentialRepository.save(credential);
+        credential.setRol(ERoles.ROLE_CLIENT);
+        return credential;
     }
 
     public List<Credential> findAll() {

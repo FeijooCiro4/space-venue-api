@@ -108,3 +108,33 @@ incluyen, deben coincidir con los almacenados. Ninguna de estas rutas transfiere
 `active`, `publicationDate` y `services` no reemplazan los valores almacenados durante la edición.
 Para modificar el catálogo se usan las rutas de `/api/services`; consultar sus rutas exactas en
 la documentación de la API. No se introduce un cambio de esquema ni una migración de base de datos.
+
+## Privacidad del catálogo y registro (puntos 11 y 12)
+
+Las lecturas de espacios devuelven `SpaceResponseDTO`, y las de imágenes devuelven
+`SpaceImageResponseDTO`, con su espacio anidado convertido al mismo DTO. Sus propiedades
+contienen valores y otros DTO, nunca entidades JPA. Se conserva la estructura de lectura
+(`consumerOwner`, `location`, `cancellationPolicies`, `services`), pero el propietario público
+incluye **únicamente `idConsumer`, `firstname` y `lastname`**. No incluye email, teléfono,
+username, credenciales, roles ni estado de cuenta. Esta reducción también se aplica a las
+listas de espacios del propietario y de administración. Los perfiles autorizados conservan
+su información de contacto. Cuando un espacio aparece dentro de una reserva, la relación
+`consumerOwner` también excluye contacto y credenciales.
+
+Los dos endpoints de registro siguen disponibles y responden 201:
+
+- `POST /api/auth/register`: recibe `RegistroDTO` con los datos del perfil.
+- `POST /api/usuarios`: recibe `CredentialRegistrationDTO` con `username` y `password`,
+  y crea el perfil con sus campos personales vacíos, como antes.
+
+Ambos delegan en `RegistrationService.register`. La contraseña debe enviarse sin codificar;
+`CredentialService.createCredential` aplica BCrypt **una única vez**. El servidor fija la
+cuenta activa y el rol `ROLE_CLIENT`, sin tomar esos valores del cuerpo. Credencial y perfil
+se insertan juntos dentro de una transacción: un fallo revierte ambos registros. Un username
+repetido devuelve 400; la restricción única protege también los registros simultáneos y
+ninguno de ellos puede actualizar una cuenta anterior. El registro no emite un token;
+para obtenerlo se usa `/api/auth/login`.
+
+No se requiere migración de esquema. Esta corrección arregla las altas nuevas: los hashes
+que ya se guardaron con doble codificación no pueden recuperarse y esas cuentas necesitan
+restablecer su contraseña. No se modifican automáticamente las credenciales existentes.

@@ -3,7 +3,8 @@ package com.utn.space.venueaapi.controllers;
 import com.utn.space.venueaapi.model.flags.Create;
 import com.utn.space.venueaapi.model.flags.Update;
 import com.utn.space.venueaapi.model.records.SpaceImageDTO;
-import com.utn.space.venueaapi.model.SpaceImage;
+import com.utn.space.venueaapi.model.records.SpaceImageResponseDTO;
+import com.utn.space.venueaapi.service.mappers.PublicSpaceMapper;
 import com.utn.space.venueaapi.service.SpaceImageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -30,16 +31,16 @@ public class SpaceImageController {
     @Operation(
             summary = "Busca TODAS las Imágenes."
     )
-    public ResponseEntity<List<SpaceImage>> listSpaceImages(){
-        return ResponseEntity.ok(spaceImagesService.findAll());
+    public ResponseEntity<List<SpaceImageResponseDTO>> listSpaceImages(){
+        return ResponseEntity.ok(spaceImagesService.findAll().stream().map(PublicSpaceMapper::toDto).toList());
     }
 
     @GetMapping("/{id}")
     @Operation(
             summary = "Busca una Imagen por su ID."
     )
-    public ResponseEntity<SpaceImage> findSpaceImageById(@PathVariable Integer id){
-        return ResponseEntity.ok(spaceImagesService.findById(id));
+    public ResponseEntity<SpaceImageResponseDTO> findSpaceImageById(@PathVariable Integer id){
+        return ResponseEntity.ok(PublicSpaceMapper.toDto(spaceImagesService.findById(id)));
     }
 
     @DeleteMapping("/{id}")
@@ -111,7 +112,7 @@ public class SpaceImageController {
     @Operation(
             summary = "Busca TODAS las Imágenes de un Espacio."
     )
-    public ResponseEntity<List<SpaceImage>> findAllBySpaceId(@PathVariable Integer id){
-        return ResponseEntity.ok(spaceImagesService.findAllBySpaceId(id));
+    public ResponseEntity<List<SpaceImageResponseDTO>> findAllBySpaceId(@PathVariable Integer id){
+        return ResponseEntity.ok(spaceImagesService.findAllBySpaceId(id).stream().map(PublicSpaceMapper::toDto).toList());
     }
 }
