@@ -48,7 +48,9 @@ public class JwtFilter extends OncePerRequestFilter {
             try {
                 username = jwtUtil.extraerUsername(jwt); // Intenta descifrar el username del token
             } catch (Exception e) {
-                logger.error("Error al procesar el token JWT: " + e.getMessage());
+                logger.warn("Token JWT inválido o expirado.");
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token JWT inválido o expirado.");
+                return;
             }
         }
 

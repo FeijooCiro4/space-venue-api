@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Isolation;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -85,6 +86,7 @@ public class ReservationService {
         return reservationRepository.save(aux);
     }
 
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public Reservation create(ReservationDTO dto) {
         if (dto.untilDate().isBefore(dto.fromDate())) {
             throw new InvalidDateException("La Fecha Final no puede ser antes que la Fecha de Inicio");
@@ -93,6 +95,9 @@ public class ReservationService {
             throw new InvalidDateException("La Fecha de Inicio no puede ser en el pasado.");
         }
 
+        // Serializar altas por espacio y mantener el bloqueo hasta guardar reserva y notificación.
+        // READ_COMMITTED permite ver la reserva confirmada por la transacción que nos precedió.
+        Space space = spaceService.findByIdForUpdate(dto.idSpace());
         Integer idLogueado = consumerService.getLoggedConsumerId();
 
         if (!isSpaceAvailableBetweenDates(dto.fromDate(),dto.untilDate(),dto.idSpace())){
@@ -109,8 +114,6 @@ public class ReservationService {
         } else {
             client = consumerService.findById(dto.idConsumer());
         }
-
-        Space space = spaceService.findById(dto.idSpace());
 
         if (space.getConsumerOwner().getIdConsumer().equals(idLogueado)) {
             throw new SelfReservationException("Señor Administrador/Anfitrión: No puede reservar su propio espacio comercial.");

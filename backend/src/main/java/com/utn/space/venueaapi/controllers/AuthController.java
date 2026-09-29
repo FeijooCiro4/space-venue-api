@@ -38,11 +38,7 @@ public class AuthController {
         if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
             String jwt = bearerToken.substring(7);
 
-            // Extraer el tiempo de expiración restante del JWT para optimizar la memoria
-            long remainingTime = blacklistService.getRemainingExpirationTime(jwt);
-
-            // Guardar en la lista negra
-            blacklistService.blacklistToken(jwt, remainingTime);
+            blacklistService.blacklistToken(jwt);
 
             return ResponseEntity.ok("Sesión cerrada exitosamente y token invalidado.");
         }

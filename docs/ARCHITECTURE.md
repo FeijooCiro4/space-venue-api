@@ -51,6 +51,16 @@ La edición general de reservas conserva estado, actividad y fecha de creación.
 
 En cada solicitud con un JWT válido y fuera de la blacklist, `JwtFilter` vuelve a consultar la credencial mediante ese servicio. Si la cuenta está desactivada o ya no existe, responde 401 antes de ejecutar el controlador. La baja propia y administrativa bloquea así las siguientes solicitudes de tokens ya emitidos. Esta comprobación requiere una consulta de credenciales por solicitud; no cancela operaciones que ya estaban en ejecución al realizarse la baja.
 
+## Sesiones y creación concurrente de reservas
+
+`JwtUtil` usa `JWT_SECRET_BASE64`, una clave privada estable de al menos 32 bytes aleatorios en Base64, sin valor predeterminado de producción. Cada JWT conserva la duración de diez horas y recibe un `jti` único para distinguir sesiones del mismo usuario creadas en el mismo segundo.
+
+`TokenBlacklistService` persiste en `revoked_tokens` la huella SHA-256 y la fecha `exp` exacta del token mediante `RevokedTokenRepository`. Las consultas de revocación usan esa base compartida, por lo que funcionan entre instancias y tras reinicios. `@EnableScheduling` habilita la limpieza horaria de filas ya vencidas. La configuración y la nueva tabla se describen en [backend/README.md](../backend/README.md#clave-jwt-y-logout).
+
+`ReservationService.create` se ejecuta en una transacción `READ_COMMITTED`. Antes de comprobar disponibilidad, `SpaceService.findByIdForUpdate` → `SpaceRepository.findByIdForUpdate` adquiere un bloqueo pesimista de escritura sobre la fila del espacio. Se bloquea el espacio y no solo sus reservas, para cubrir también la primera reserva. El bloqueo se mantiene hasta confirmar o revertir reserva, servicios seleccionados y notificación. Una solicitud que esperaba vuelve a consultar las reservas ya confirmadas en la base; los demás espacios pueden reservarse en paralelo. En MySQL se requiere un motor transaccional con bloqueos de fila, como InnoDB.
+
+Esta protección cubre altas concurrentes mediante `create`; la edición y las transiciones de estado conservan los pendientes de negocio indicados debajo.
+
 ## Pendientes identificados en el código
 
 Los siguientes problemas existían antes de reorganizar el proyecto y requieren una etapa específica de corrección.
@@ -59,12 +69,11 @@ Los siguientes problemas existían antes de reorganizar el proyecto y requieren 
 | --- | --- | --- |
 | Webhook de pagos incompleto | `PaymentWebhookController`, `SecurityConfig`, `PaymentServiceImpl` | La ruta exige autenticación de la aplicación y contiene una simulación que puede confirmar reservas. Separar simulación de producción, verificar autenticidad del proveedor y después configurar acceso al webhook. No se abrió públicamente esa ruta. |
 | Estados de pago y reserva mezclados | `PaymentServiceImpl.processNotification`, `ReservationService` | Confirmación del anfitrión y pago aprobado usan `CONFIRMED`; revisar transiciones, validación de importe/moneda e idempotencia. |
-| Persistencia y revocación de sesiones | `JwtUtil`, `TokenBlacklistService` | Clave JWT nueva en cada arranque; blacklist de una hora frente a JWT de diez horas. |
 | Registro alternativo duplica hashing | `ConsumerController.createUser`, `CredentialService.saveCredential` | `/api/usuarios` codifica la contraseña dos veces. Usar `/api/auth/register` y unificar registro en una etapa posterior. |
 | Cambio de estado de usuario sin implementación | `ConsumerController.toggleUserStatus` | Responde éxito sin modificar datos y requiere `active`, que es obligatorio en la solicitud. |
 | Edición de espacios propios inconsistente | `SpaceDTO`, `SpaceService.modifyOwnedSpace` y `modifySpace` | El grupo Update exige owner, aunque el propietario se obtiene de la sesión; luego se recrea la entidad sin conservar claramente estado y relaciones. Diseñar DTO de edición específico y actualizar la entidad existente. |
 | Políticas sin datos iniciales | `CancellationPoliciesService`, `EPolicyType` | Crear un espacio exige que la política exista en MySQL. No hay seed/migración de políticas; definir valores reales antes de cargar catálogo. |
-| Disponibilidad sin protección concurrente | `ReservationService.create` | Comprobación y escritura separadas; falta resolver carreras entre solicitudes simultáneas. Revisar también duración cero e inactividad del espacio/servicios. |
+| Reglas de disponibilidad pendientes fuera de la creación concurrente | `ReservationService.modify` y cambios de estado | Extender la comprobación de disponibilidad y el bloqueo por espacio a la edición y a transiciones que vuelvan a ocupar un horario. Revisar también duración cero e inactividad del espacio/servicios. |
 | Lecturas de notificaciones con efectos | `NotificationService.listAllByIdConsumerForConsumer` | Listar marca como vistas todas las notificaciones devueltas. Definir una operación de lectura sin mutación. |
 | Contrato expone entidades y errores heterogéneos | Controladores y `GlobalExceptionHandler` | Aún hay datos personales anidados, texto plano, mapas y entidades completas. Incorporar DTO de salida y un formato de errores estable con una transición compatible. |
 | Validaciones incompletas | `AuthController.register`, DTO y grupos Create/Update | Algunas restricciones no se invocan o usan grupos inadecuados. Validar todos los payloads en el servidor. |
@@ -87,4 +96,4 @@ cd backend
 ./mvnw package
 ```
 
-Las pruebas Java cubren arranque, CORS, catálogo/OpenAPI, filtros, protección de contraseñas, ausencia del contrato retirado y regresión de reservas. `ResourceOwnershipTests` agrega 33 casos con JWT reales para accesos ajenos, titulares, dueños y administradores, incluyendo falsificación de IDs y cambios de estado por el PUT general. `AccountDeactivationTests` verifica login de cuentas activas e inactivas, baja propia de CLIENT/ADMIN, baja administrativa, rechazo de JWT anteriores y tokens de cuentas inexistentes. H2 no sustituye la validación con MySQL ni una compra real con Mercado Pago.
+Las pruebas Java cubren arranque, CORS, catálogo/OpenAPI, filtros, protección de contraseñas, ausencia del contrato retirado y regresión de reservas. `ResourceOwnershipTests` agrega 33 casos con JWT reales para accesos ajenos, titulares, dueños y administradores, incluyendo falsificación de IDs y cambios de estado por el PUT general. `AccountDeactivationTests` verifica login de cuentas activas e inactivas, baja propia de CLIENT/ADMIN, baja administrativa, rechazo de JWT anteriores y tokens de cuentas inexistentes. `JwtLifecycleTests` verifica clave compartida, sesiones distintas, revocación tras recrear el servicio, limpieza por vencimiento y rechazo de tokens inválidos. `ReservationConcurrencyTests` usa hilos y transacciones independientes para comprobar altas simultáneas, independencia entre espacios y rollback ante fallos de notificación. H2 no sustituye la validación con MySQL ni una compra real con Mercado Pago.

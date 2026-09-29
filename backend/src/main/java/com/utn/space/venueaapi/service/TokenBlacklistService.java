@@ -1,36 +1,60 @@
 package com.utn.space.venueaapi.service;
 
+import com.utn.space.venueaapi.model.RevokedToken;
+import com.utn.space.venueaapi.repository.RevokedTokenRepository;
+import com.utn.space.venueaapi.security.JwtUtil;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.time.Clock;
+import java.time.Instant;
+import java.util.HexFormat;
 
 @Service
 public class TokenBlacklistService {
+    private final RevokedTokenRepository revokedTokenRepository;
+    private final JwtUtil jwtUtil;
+    private final Clock clock;
 
-    // Almacena: Token -> Timestamp de expiración
-    private final Map<String, Long> blacklist = new ConcurrentHashMap<>();
+    @Autowired
+    public TokenBlacklistService(RevokedTokenRepository revokedTokenRepository, JwtUtil jwtUtil) {
+        this(revokedTokenRepository, jwtUtil, Clock.systemUTC());
+    }
 
-    public void blacklistToken(String token, long remainingTimeMs) {
-        long expiryTimestamp = System.currentTimeMillis() + remainingTimeMs;
-        blacklist.put(token, expiryTimestamp);
+    public TokenBlacklistService(RevokedTokenRepository revokedTokenRepository, JwtUtil jwtUtil, Clock clock) {
+        this.revokedTokenRepository = revokedTokenRepository;
+        this.jwtUtil = jwtUtil;
+        this.clock = clock;
+    }
+
+    @Transactional
+    public void blacklistToken(String token) {
+        Instant expiration = jwtUtil.extraerClaims(token).getExpiration().toInstant();
+        // Persistir solo la huella, nunca el token reutilizable, hasta su vencimiento real.
+        revokedTokenRepository.save(new RevokedToken(tokenHash(token), expiration));
     }
 
     public boolean isTokenBlacklisted(String token) {
-        return blacklist.containsKey(token) && blacklist.get(token) > System.currentTimeMillis();
+        return revokedTokenRepository.existsByTokenHashAndExpiresAtAfter(tokenHash(token), clock.instant());
     }
 
-    public long getRemainingExpirationTime(String token) {
-        // Lógica para leer los Claims del JWT y restar (ExpirationTime - CurrentTime)
-        // Por simplicidad, si expira en 1 hora por defecto, se puede retornar 3600000ms
-        return 3600000;
-    }
-
-    // Tarea programada: Limpia la memoria cada hora de los tokens que ya expiraron por sí solos
     @Scheduled(fixedRate = 3600000)
+    @Transactional
     public void cleanExpiredTokens() {
-        long now = System.currentTimeMillis();
-        blacklist.entrySet().removeIf(entry -> entry.getValue() < now);
+        revokedTokenRepository.deleteByExpiresAtLessThanEqual(clock.instant());
+    }
+
+    private String tokenHash(String token) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(token.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 no está disponible", e);
+        }
     }
 }

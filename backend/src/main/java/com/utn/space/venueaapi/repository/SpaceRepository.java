@@ -2,14 +2,22 @@ package com.utn.space.venueaapi.repository;
 
 import com.utn.space.venueaapi.model.Space;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface SpaceRepository extends JpaRepository<Space, Integer> {
+    // Bloquear el espacio también funciona cuando aún no tiene ninguna reserva.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT s FROM Space s WHERE s.idSpace = :id")
+    Optional<Space> findByIdForUpdate(@Param("id") Integer id);
+
     @Query("SELECT s FROM Space s WHERE " +
             "( :nameSpace IS NULL OR LOWER(s.nameSpace) LIKE LOWER(CONCAT('%', :nameSpace, '%')) ) AND " +
             "( :minPrice IS NULL OR s.basePrice >= :minPrice ) AND " +

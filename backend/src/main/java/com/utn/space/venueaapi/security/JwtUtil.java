@@ -2,17 +2,34 @@ package com.utn.space.venueaapi.security;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.stereotype.Component;
-import java.security.Key;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import javax.crypto.SecretKey;
+import java.time.Clock;
+import java.util.UUID;
 import java.util.Date;
 
 @Component
 public class JwtUtil {
 
-    // Genera automáticamente una clave criptográfica de 256 bits apta para el algoritmo HS256
-    private final Key CLAVE_SECRETA = Keys.secretKeyFor(SignatureAlgorithm.HS256);
+    private final SecretKey CLAVE_SECRETA;
+    private final Clock clock;
+
+    @Autowired
+    public JwtUtil(@Value("${app.jwt.secret-base64}") String secretBase64) {
+        this(secretBase64, Clock.systemUTC());
+    }
+
+    public JwtUtil(String secretBase64, Clock clock) {
+        if (secretBase64 == null || secretBase64.isBlank()) {
+            throw new IllegalArgumentException("Configure JWT_SECRET_BASE64 con al menos 32 bytes aleatorios codificados en Base64.");
+        }
+        this.CLAVE_SECRETA = Keys.hmacShaKeyFor(Decoders.BASE64.decode(secretBase64));
+        this.clock = clock;
+    }
 
     // Define la vida útil del token en 10 horas expresadas en milisegundos
     private final long TIEMPO_EXPIRACION = 36_000_000;
@@ -21,10 +38,11 @@ public class JwtUtil {
     public String generarToken(String username, String rol) {
         return Jwts.builder()
                 .setSubject(username)
+                .setId(UUID.randomUUID().toString())
                 .claim("rol", rol) // Para poder pasar roles en el payload
-                .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + TIEMPO_EXPIRACION))
-                .signWith(CLAVE_SECRETA)
+                .setIssuedAt(new Date(clock.millis()))
+                .setExpiration(new Date(clock.millis() + TIEMPO_EXPIRACION))
+                .signWith(CLAVE_SECRETA, Jwts.SIG.HS256)
                 .compact();
     }
 
@@ -32,17 +50,19 @@ public class JwtUtil {
     public String generarToken(String username, String rol, Integer consumerId) {
         return Jwts.builder()
                 .setSubject(username)
+                .setId(UUID.randomUUID().toString())
                 .claim("rol", rol)
                 .claim("consumerId", consumerId)  // Agrega el consumerId al payload
-                .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + TIEMPO_EXPIRACION))
-                .signWith(CLAVE_SECRETA)
+                .setIssuedAt(new Date(clock.millis()))
+                .setExpiration(new Date(clock.millis() + TIEMPO_EXPIRACION))
+                .signWith(CLAVE_SECRETA, Jwts.SIG.HS256)
                 .compact();
     }
 
     // Abre el token y extrae su payload de datos (Claims) usando la firma secreta de control
     public Claims extraerClaims(String token) {
         return Jwts.parser()
+                .clock(() -> Date.from(clock.instant()))
                 .setSigningKey(CLAVE_SECRETA) // Suministra la clave para comprobar que el token no se modificó en el camino
                 .build()
                 .parseClaimsJws(token) // Intenta parsear e inspeccionar la firma del token
@@ -73,7 +93,7 @@ public class JwtUtil {
     // Verifica que el token pertenezca al usuario en cuestión y que la fecha actual no supere la de expiración
     public boolean validarToken(String token, String username) {
         final String tokenUsername = extraerUsername(token);
-        boolean estaExpirado = extraerClaims(token).getExpiration().before(new Date());
+        boolean estaExpirado = extraerClaims(token).getExpiration().before(Date.from(clock.instant()));
         return (tokenUsername.equals(username) && !estaExpirado); // Retorna verdadero solo si ambas condiciones se cumplen
     }
 }

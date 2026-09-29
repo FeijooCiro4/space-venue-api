@@ -25,12 +25,15 @@ CREATE DATABASE space_venue_db;
 
 Configurá las variables de [backend/.env.example](backend/.env.example) en el IDE o exportalas en la terminal. El archivo es una referencia; Maven no carga `.env` automáticamente.
 
-Ejemplo para Bash, reemplazando usuario y contraseña por los de tu instancia local:
+Generá una clave privada una sola vez con `openssl rand -base64 32` y conservá el valor para `JWT_SECRET_BASE64` entre reinicios.
+
+Ejemplo para Bash, reemplazando usuario, contraseña y clave JWT por tus valores:
 
 ```bash
 export SPRING_DATASOURCE_URL='jdbc:mysql://localhost:3306/space_venue_db?serverTimezone=UTC'
 export SPRING_DATASOURCE_USERNAME='spacevenue'
 export SPRING_DATASOURCE_PASSWORD='tu-contraseña-local'
+export JWT_SECRET_BASE64='tu-clave-base64-generada-una-sola-vez'
 cd backend
 ./mvnw spring-boot:run
 ```
@@ -53,7 +56,7 @@ Desde `backend/`:
 java -jar target/space-venueapi-0.0.1-SNAPSHOT.jar
 ```
 
-Las pruebas usan H2 en memoria y no requieren MySQL ni credenciales reales. Para ejecutar el JAR deben estar configuradas las variables de conexión a MySQL. También podés usar Maven instalado (`mvn test`).
+Las pruebas usan H2 en memoria y no requieren MySQL ni credenciales reales. Para ejecutar el JAR deben estar configuradas las variables de conexión a MySQL y `JWT_SECRET_BASE64`. También podés usar Maven instalado (`mvn test`).
 
 ## Documentación
 

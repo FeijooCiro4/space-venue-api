@@ -15,7 +15,7 @@ curl http://localhost:8080/api/reservations/me \
   -H 'Authorization: Bearer <token>'
 ```
 
-Registro recomendado: `POST /auth/register` con `firstname`, `lastname`, `email`, `phone`, `username`, `password`. Respuesta 201 en texto. Logout: `POST /auth/logout` con Authorization.
+Registro recomendado: `POST /auth/register` con `firstname`, `lastname`, `email`, `phone`, `username`, `password`. Respuesta 201 en texto. Logout: `POST /auth/logout` con Authorization. El token queda revocado hasta su vencimiento real, también después de reiniciar el servidor; las otras sesiones del usuario conservan sus tokens. Cada instancia debe usar la misma clave JWT y base de datos.
 
 La baja propia (`DELETE /usuario`) o administrativa (`DELETE /usuarios/{id}`) desactiva la cuenta. Desde la siguiente solicitud, sus JWT anteriores reciben 401 aunque no hayan vencido; intentar un nuevo login también devuelve 401. El catálogo público sigue disponible sin token.
 
@@ -99,7 +99,7 @@ Todas las rutas de la tabla son relativas a `/api`. Para el catálogo completo d
 
 Las fechas son horas locales sin offset, con segundos (`yyyy-MM-dd'T'HH:mm:ss`). La aplicación conserva el tratamiento actual de zonas horarias; no introducir conversiones a UTC sin revisar ese contrato.
 
-El backend obtiene el cliente de la sesión, fija `TENTATIVE`, calcula precio por duración más opcionales, guarda la reserva y notifica al dueño. No enviar precios finales, estado o identidad como decisiones del cliente. El precio definitivo es el calculado por el servidor.
+El backend obtiene el cliente de la sesión, fija `TENTATIVE`, calcula precio por duración más opcionales, guarda la reserva y notifica al dueño. La creación bloquea el espacio en la base durante la comprobación y el guardado: si llegan altas simultáneas para el mismo horario, solo una se crea y la siguiente recibe 400 por falta de disponibilidad. Reserva y notificación se guardan en una misma transacción. No enviar precios finales, estado o identidad como decisiones del cliente. El precio definitivo es el calculado por el servidor.
 
 Estados existentes: `TENTATIVE`, `CONFIRMED`, `REJECTED`, `CANCELLED`, `COMPLETED`.
 

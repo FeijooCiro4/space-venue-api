@@ -42,6 +42,11 @@ public class SpaceService {
         return spaceRepository.findById(id).orElseThrow(()-> new IdNotFoundException("Space", id));
     }
 
+    public Space findByIdForUpdate(Integer id) {
+        return spaceRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new IdNotFoundException("Space", id));
+    }
+
     public void deleteById(Integer id){
         if(!spaceRepository.existsById(id)){
             throw new IdNotFoundException("Space", id);
