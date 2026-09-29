@@ -139,6 +139,46 @@ class ReservationConcurrencyTests {
         assertEquals(1, reservations.count());
     }
 
+    @Test
+    void simultaneousEditsCannotMoveTwoReservationsIntoTheSameSlot() throws Exception {
+        Reservation first = book("concurrent-client-a", firstSpaceId, new CountDownLatch(0)).get(5, TimeUnit.SECONDS);
+        Reservation second = book("concurrent-client-b", secondSpaceId, new CountDownLatch(0)).get(5, TimeUnit.SECONDS);
+        Integer targetId = transaction.execute(status -> space(spaces.findById(firstSpaceId).orElseThrow().getConsumerOwner()).getIdSpace());
+        CountDownLatch ready = new CountDownLatch(2);
+        List<Future<Reservation>> tasks = new ArrayList<>();
+        transaction.executeWithoutResult(status -> {
+            spaces.findByIdForUpdate(targetId).orElseThrow();
+            for (Reservation booked : List.of(first, second)) {
+                tasks.add(executor.submit(() -> {
+                    ready.countDown();
+                    return service.modify(new ReservationDTO(booked.getId(), "Movida", "Edición concurrente",
+                            start, start.plusHours(2), null, null, null, null,
+                            booked.getConsumer().getIdConsumer(), targetId, List.of()));
+                }));
+            }
+            try {
+                assertTrue(ready.await(5, TimeUnit.SECONDS));
+                for (Future<?> task : tasks) {
+                    assertThrows(TimeoutException.class, () -> task.get(250, TimeUnit.MILLISECONDS));
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new AssertionError(e);
+            }
+        });
+        int succeeded = 0;
+        for (Future<Reservation> task : tasks) {
+            try {
+                task.get(10, TimeUnit.SECONDS);
+                succeeded++;
+            } catch (ExecutionException e) {
+                assertInstanceOf(InvalidReservationException.class, e.getCause());
+            }
+        }
+        assertEquals(1, succeeded);
+        assertEquals(1, reservations.findAllBySpace_IdSpace(targetId).size());
+    }
+
     private Future<Reservation> book(String username, Integer spaceId, CountDownLatch ready) {
         return executor.submit(() -> {
             SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(

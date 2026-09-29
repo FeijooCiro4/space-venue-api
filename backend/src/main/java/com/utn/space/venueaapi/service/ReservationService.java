@@ -4,7 +4,9 @@ import com.utn.space.venueaapi.exceptions.*;
 import com.utn.space.venueaapi.model.*;
 import com.utn.space.venueaapi.model.records.ReservationDTO;
 import com.utn.space.venueaapi.repository.SpaceServiceItemRepository;
-import com.utn.space.venueaapi.service.mappers.ReservationMapper;
+import com.utn.space.venueaapi.repository.PaymentRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import com.utn.space.venueaapi.repository.ReservationRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,19 +15,22 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Isolation;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.HashSet;
 
 @Slf4j
 @Service
 public class ReservationService {
     @Autowired
-    private ReservationMapper reservationMapper;
+    private EntityManager entityManager;
 
     @Autowired
-    private ServiceSelectedService serviceSelectedService;
+    private PaymentRepository paymentRepository;
 
     @Autowired
     private ConsumerService consumerService;
@@ -66,207 +71,176 @@ public class ReservationService {
         return reservationRepository.findAllByConsumer_IdConsumer(loggedCustomerId);
     }
 
-    private boolean isSpaceAvailableBetweenDates(LocalDateTime from, LocalDateTime until, Integer spaceId){
-        List<Reservation> reservationsForSpace = reservationRepository.findAllBySpace_IdSpace(spaceId);
-        
-        // Filtro para mantener SOLO las reservas activas y confirmadas (no canceladas/rechazadas)
-        reservationsForSpace = reservationsForSpace.stream().
-                filter(reservation -> !reservation.getStatus().equals(ReservationStatus.CANCELLED)
-                        && !reservation.getStatus().equals(ReservationStatus.REJECTED)
-                        && reservation.getIsActive()).toList();
-
-        Integer bufferTime = spaceService.findById(spaceId).getBufferTime();
-
-        // Busco si alguna de las reservas que quedan se solapa con la reserva actual. Se le suma el buffer time a el untilDate de la reserva
-        return !reservationsForSpace.stream().anyMatch(reservation -> !reservation.getFromDate().isAfter(until) && !reservation.getUntilDate().plusMinutes(bufferTime).isBefore(from));
+    private boolean isSpaceAvailableBetweenDates(LocalDateTime from, LocalDateTime until,
+                                                  Space space, Integer excludedReservationId) {
+        return reservationRepository.findAllBySpace_IdSpace(space.getIdSpace()).stream()
+                .filter(other -> !Objects.equals(other.getId(), excludedReservationId))
+                .filter(other -> Boolean.TRUE.equals(other.getIsActive()))
+                .filter(other -> other.getStatus() != ReservationStatus.CANCELLED
+                        && other.getStatus() != ReservationStatus.REJECTED)
+                .noneMatch(other -> !other.getFromDate().isAfter(until.plusMinutes(space.getBufferTime()))
+                        && !other.getUntilDate().plusMinutes(space.getBufferTime()).isBefore(from));
     }
 
-    @Transactional
-    public Reservation saveReservation(Reservation aux) {
-        return reservationRepository.save(aux);
+    // Usar dentro de una transacción. Refrescar evita reutilizar la entidad leída
+    // por @PreAuthorize antes de esperar el bloqueo de otra solicitud.
+    public Reservation findByIdForUpdate(Integer id) {
+        Reservation reservation = reservationRepository.findByIdForUpdate(id)
+                .orElseThrow(() -> new IdNotFoundException("Reservation", id));
+        entityManager.refresh(reservation, LockModeType.PESSIMISTIC_WRITE);
+        return reservation;
+    }
+
+    private void validateBooking(Consumer consumer, Space space, LocalDateTime from,
+                                 LocalDateTime until, Integer excludedReservationId) {
+        if (from == null || until == null || !until.isAfter(from) || from.isBefore(LocalDateTime.now())) {
+            throw new InvalidDateException("La reserva debe comenzar en el futuro y tener una duración positiva.");
+        }
+        if (!Boolean.TRUE.equals(space.getIsActive())) {
+            throw new InvalidReservationException("El espacio no está activo.");
+        }
+        if (space.getConsumerOwner().getIdConsumer().equals(consumer.getIdConsumer())) {
+            throw new SelfReservationException("No puede reservar su propio espacio.");
+        }
+        if (!isSpaceAvailableBetweenDates(from, until, space, excludedReservationId)) {
+            throw new InvalidReservationException("La reserva no está disponible en las fechas seleccionadas.");
+        }
+        long count = reservationRepository.countCompletedReservationsByConsumerAndSpace(
+                consumer.getIdConsumer(), space.getIdSpace());
+        if (count >= 5) {
+            throw new ReservationLimitException("Has alcanzado el límite máximo de 5 reservas en este espacio.");
+        }
+    }
+
+    private void applyDetails(Reservation reservation, ReservationDTO dto, Space space) {
+        List<ServiceSelected> selected = new ArrayList<>();
+        BigDecimal extras = BigDecimal.ZERO;
+        var ids = new HashSet<Integer>();
+        if (dto.idServicesSelec() != null) {
+            for (Integer id : dto.idServicesSelec()) {
+                if (id == null || !ids.add(id)) {
+                    throw new InvalidReservationException("Los servicios seleccionados deben tener IDs válidos y no repetidos.");
+                }
+                SpaceServiceItem item = spaceServiceItemRepository.findById(id)
+                        .orElseThrow(() -> new IdNotFoundException("Servicio Catálogo", id));
+                if (!item.getSpace().getIdSpace().equals(space.getIdSpace())) {
+                    throw new ServiceOutOfPlaceException("El servicio no corresponde al espacio seleccionado.");
+                }
+                if (!Boolean.TRUE.equals(item.getIsActive())) {
+                    throw new InvalidReservationException("El servicio seleccionado no está activo.");
+                }
+                selected.add(new ServiceSelected(item, reservation));
+                extras = extras.add(item.getPrice());
+            }
+        }
+        reservation.setTitle(dto.title());
+        reservation.setDescription(dto.description());
+        reservation.setFromDate(dto.fromDate());
+        reservation.setUntilDate(dto.untilDate());
+        reservation.setSpace(space);
+        if (reservation.getServices() == null) reservation.setServices(new ArrayList<>());
+        reservation.getServices().clear();
+        reservation.getServices().addAll(selected);
+        long minutes = java.time.temporal.ChronoUnit.MINUTES.between(dto.fromDate(), dto.untilDate());
+        reservation.setFinalPrice(space.getBasePrice().multiply(BigDecimal.valueOf(minutes))
+                .divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP).add(extras));
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public Reservation create(ReservationDTO dto) {
-        if (dto.untilDate().isBefore(dto.fromDate())) {
-            throw new InvalidDateException("La Fecha Final no puede ser antes que la Fecha de Inicio");
-        }
-        if (dto.fromDate().isBefore(LocalDateTime.now())) {
-            throw new InvalidDateException("La Fecha de Inicio no puede ser en el pasado.");
-        }
-
-        // Serializar altas por espacio y mantener el bloqueo hasta guardar reserva y notificación.
-        // READ_COMMITTED permite ver la reserva confirmada por la transacción que nos precedió.
         Space space = spaceService.findByIdForUpdate(dto.idSpace());
-        Integer idLogueado = consumerService.getLoggedConsumerId();
-
-        if (!isSpaceAvailableBetweenDates(dto.fromDate(),dto.untilDate(),dto.idSpace())){
-            throw new InvalidReservationException("La reserva no esta disponible en la fechas seleccionadas");
-        }
-
-        // Determinar el consumidor asociado a la reserva.
-        // Un `idConsumer` arbitrario en el DTO no debe permitir
-        // reservar a nombre de otra persona. Usamos el usuario logueado salvo que
-        // el DTO explícitamente indique el mismo id.
-        Consumer client;
-        if (dto.idConsumer() == null || !idLogueado.equals(dto.idConsumer())) {
-            client = consumerService.findById(idLogueado);
-        } else {
-            client = consumerService.findById(dto.idConsumer());
-        }
-
-        if (space.getConsumerOwner().getIdConsumer().equals(idLogueado)) {
-            throw new SelfReservationException("Señor Administrador/Anfitrión: No puede reservar su propio espacio comercial.");
-        }
-
-        // Validar límite de 5 reservas completadas/confirmadas por espacio
-        long reservasCompletadas = reservationRepository.countCompletedReservationsByConsumerAndSpace(idLogueado, dto.idSpace());
-        if (reservasCompletadas >= 5) {
-            throw new ReservationLimitException("Has alcanzado el límite máximo de 5 reservas en este espacio. No puedes reservar nuevamente este espacio.");
-        }
-
-        Reservation aux = reservationMapper.toEntity(dto);
-        aux.setCreatedAt(LocalDateTime.now(ZoneOffset.UTC));
-        aux.setStatus(ReservationStatus.TENTATIVE);
-        aux.setIsActive(true);
-
-        aux.setConsumer(client);
-
-        aux.setSpace(space);
-
-        List<ServiceSelected> serviciosSeleccionados = new ArrayList<>();
-        BigDecimal totalServicios = BigDecimal.ZERO;
-
-        // Defensa contra nulos si el usuario no seleccionó ningún opcional
-        if (dto.idServicesSelec() != null) {
-            for (Integer idService : dto.idServicesSelec()) {
-                SpaceServiceItem servicioCatalogo = spaceServiceItemRepository.findById(idService)
-                        .orElseThrow(() -> new IdNotFoundException("Servicio Catálogo", idService));
-
-                if (!servicioCatalogo.getSpace().getIdSpace().equals(space.getIdSpace())) {
-                    throw new ServiceOutOfPlaceException("El servicio con ID " + idService + " no corresponde al espacio seleccionado.");
-                }
-
-                ServiceSelected selected = new ServiceSelected(servicioCatalogo, aux);
-                totalServicios = totalServicios.add(servicioCatalogo.getPrice());
-                serviciosSeleccionados.add(selected);
-            }
-        }
-
-        aux.setServices(serviciosSeleccionados);
-
-        // Calcular precio por horas
-        long minutosDiferencia = java.time.temporal.ChronoUnit.MINUTES.between(dto.fromDate(), dto.untilDate());
-        double horasDiferencia = minutosDiferencia / 60.0;
-        BigDecimal precioBase = space.getBasePrice().multiply(BigDecimal.valueOf(horasDiferencia));
-
-        aux.setFinalPrice(precioBase.add(totalServicios));
-
-        Reservation reservaGuardada = saveReservation(aux);
-
-        // Crear notificación al dueño del espacio
-        String mensajeNotificacion = "Nueva reserva de " + client.getFirstname() + " " + client.getLastname() +
-                " para " + space.getNameSpace() + ". Confirmá o rechazá la reserva.";
-        notificationService.createNotification(space.getConsumerOwner(), mensajeNotificacion);
-
-        return reservaGuardada;
+        Consumer client = consumerService.findById(consumerService.getLoggedConsumerId());
+        validateBooking(client, space, dto.fromDate(), dto.untilDate(), null);
+        // El servidor decide identidad, estado y actividad, incluso si el DTO trae esos campos.
+        Reservation reservation = new Reservation();
+        reservation.setConsumer(client);
+        reservation.setCreatedAt(LocalDateTime.now(ZoneOffset.UTC));
+        reservation.setStatus(ReservationStatus.TENTATIVE);
+        reservation.setIsActive(true);
+        applyDetails(reservation, dto, space);
+        Reservation saved = reservationRepository.save(reservation);
+        notificationService.createNotification(space.getConsumerOwner(),
+                "Nueva reserva de " + client.getFirstname() + " " + client.getLastname()
+                        + " para " + space.getNameSpace() + ". Confirmá o rechazá la reserva.");
+        return saved;
     }
 
-
-    @Transactional
-    public Reservation modify (ReservationDTO dto){
-        if (dto.untilDate().isBefore(dto.fromDate())) {
-            throw new InvalidDateException("La Fecha Final no puede ser antes que la Fecha de Inicio");
+    public void requireEditable(Reservation reservation) {
+        requireState(reservation, ReservationStatus.TENTATIVE);
+        if (paymentRepository.existsByReservation_Id(reservation.getId())) {
+            throw new InvalidReservationException("No se puede editar una reserva que ya tiene un pago registrado.");
         }
-        if (dto.fromDate().isBefore(LocalDateTime.now())) {
-            throw new InvalidDateException("La Fecha Final no puede ser antes que la Fecha de Inicio");
+    }
+
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public Reservation modify(ReservationDTO dto) {
+        Reservation reservation = findByIdForUpdate(dto.id());
+        requireEditable(reservation);
+        if (!Objects.equals(dto.idConsumer(), reservation.getConsumer().getIdConsumer())) {
+            throw new InvalidReservationException("No se puede cambiar el titular de la reserva.");
         }
-        Reservation existingReservation = findById(dto.id());
-        Reservation nuevaReserva = reservationMapper.toEntity(dto);
-        // Los cambios de estado tienen endpoints con permisos específicos.
-        nuevaReserva.setStatus(existingReservation.getStatus());
-        nuevaReserva.setIsActive(existingReservation.getIsActive());
-        nuevaReserva.setCreatedAt(existingReservation.getCreatedAt());
-
-        nuevaReserva.setConsumer(consumerService.findById(dto.idConsumer()));
-
-        nuevaReserva.setSpace(spaceService.findById(dto.idSpace()));
-
-
-        //limpiar servicios seleccionados anteriores
-        serviceSelectedService.deleteSelectedServiceByReserveId(dto.id());
-
-        List<ServiceSelected> list= new ArrayList<>();
-        list= nuevaReserva.getSpace().getServices().stream()
-                .filter(item->dto.idServicesSelec().contains(item.getId()))//filtro todos los serviceItem Seleccionados para la reserva
-                .map(item-> new ServiceSelected(item, nuevaReserva))  //transformo los item en serviceSelected
-                .toList();
-
-         nuevaReserva.setServices(list);
-
-         // Calcular precio por horas
-         long minutosDiferencia = java.time.temporal.ChronoUnit.MINUTES.between(dto.fromDate(), dto.untilDate());
-         double horasDiferencia = minutosDiferencia / 60.0;
-         BigDecimal precioBase = nuevaReserva.getSpace().getBasePrice().multiply(BigDecimal.valueOf(horasDiferencia));
-
-         nuevaReserva.setFinalPrice(
-                 precioBase.add( //el + no funciona con bigDecimal
-                         nuevaReserva.getServices()
-                                 .stream()
-                                 .map(ServiceSelected::getPriceAtReservation)
-                                 .reduce(BigDecimal.ZERO, BigDecimal::add)
-                 )
-         );
-        return reservationRepository.save(nuevaReserva);
+        Integer oldSpaceId = reservation.getSpace().getIdSpace();
+        // Orden estable para dos ediciones que intercambian espacios.
+        spaceService.findByIdForUpdate(Math.min(oldSpaceId, dto.idSpace()));
+        Space target = spaceService.findByIdForUpdate(Math.max(oldSpaceId, dto.idSpace()));
+        if (!target.getIdSpace().equals(dto.idSpace())) target = spaceService.findById(dto.idSpace());
+        validateBooking(reservation.getConsumer(), target, dto.fromDate(), dto.untilDate(), reservation.getId());
+        applyDetails(reservation, dto, target);
+        return reservationRepository.save(reservation);
     }
 
-    public Reservation confirmReservation(Integer id){
-        Reservation aux= reservationRepository.findById(id).orElseThrow(()->new IdNotFoundException ("Reservation", id));
-        aux.setStatus(ReservationStatus.CONFIRMED);
-        Reservation confirmed = reservationRepository.save(aux);
-
-        // Notificar al usuario que su reserva fue confirmada
-        String mensaje = "Tu reserva en " + aux.getSpace().getNameSpace() + " ha sido confirmada. ¡Ya puedes pagar!";
-        notificationService.createNotification(aux.getConsumer(), mensaje);
-
-        return confirmed;
+    private void requireState(Reservation reservation, ReservationStatus... allowed) {
+        if (!Boolean.TRUE.equals(reservation.getIsActive()) ||
+                java.util.Arrays.stream(allowed).noneMatch(state -> state == reservation.getStatus())) {
+            throw new InvalidReservationException("Operación no permitida para el estado actual de la reserva.");
+        }
     }
 
-    public Reservation rejectReservation(Integer id){
-        Reservation aux= reservationRepository.findById(id).orElseThrow(()->new IdNotFoundException ("Reservation", id));
-        aux.setStatus(ReservationStatus.REJECTED);
-        Reservation rejected = reservationRepository.save(aux);
-
-        // Notificar al usuario que su reserva fue rechazada
-        String mensaje = "Tu reserva en " + aux.getSpace().getNameSpace() + " ha sido rechazada por el propietario.";
-        notificationService.createNotification(aux.getConsumer(), mensaje);
-
-        return rejected;
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public Reservation confirmReservation(Integer id) {
+        Reservation reservation = findByIdForUpdate(id);
+        requireState(reservation, ReservationStatus.TENTATIVE);
+        Space space = spaceService.findByIdForUpdate(reservation.getSpace().getIdSpace());
+        validateBooking(reservation.getConsumer(), space, reservation.getFromDate(), reservation.getUntilDate(), id);
+        reservation.setStatus(ReservationStatus.CONFIRMED);
+        notificationService.createNotification(reservation.getConsumer(),
+                "Tu reserva en " + space.getNameSpace() + " ha sido confirmada. ¡Ya puedes pagar!");
+        return reservationRepository.save(reservation);
     }
 
-    public Reservation cancelReservation(Integer id){
-        Reservation aux= reservationRepository.findById(id).orElseThrow(()->new IdNotFoundException ("Reservation", id));
-        aux.setStatus(ReservationStatus.CANCELLED);
-        Reservation cancelled = reservationRepository.save(aux);
-
-        // Notificar al dueño del espacio que la reserva fue cancelada
-        String mensaje = "La reserva de " + aux.getConsumer().getFirstname() + " " + aux.getConsumer().getLastname() +
-                " en " + aux.getSpace().getNameSpace() + " ha sido cancelada.";
-        notificationService.createNotification(aux.getSpace().getConsumerOwner(), mensaje);
-
-        return cancelled;
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public Reservation rejectReservation(Integer id) {
+        Reservation reservation = findByIdForUpdate(id);
+        requireState(reservation, ReservationStatus.TENTATIVE);
+        reservation.setStatus(ReservationStatus.REJECTED);
+        notificationService.createNotification(reservation.getConsumer(),
+                "Tu reserva en " + reservation.getSpace().getNameSpace() + " ha sido rechazada por el propietario.");
+        return reservationRepository.save(reservation);
     }
 
-    public Reservation completeReservation(Integer id){
-        Reservation aux= reservationRepository.findById(id).orElseThrow(()->new IdNotFoundException ("Reservation", id));
-        aux.setStatus(ReservationStatus.COMPLETED);
-        return reservationRepository.save(aux);
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public Reservation cancelReservation(Integer id) {
+        Reservation reservation = findByIdForUpdate(id);
+        requireState(reservation, ReservationStatus.TENTATIVE, ReservationStatus.CONFIRMED);
+        reservation.setStatus(ReservationStatus.CANCELLED);
+        notificationService.createNotification(reservation.getSpace().getConsumerOwner(),
+                "La reserva de " + reservation.getConsumer().getFirstname() + " " + reservation.getConsumer().getLastname()
+                        + " en " + reservation.getSpace().getNameSpace() + " ha sido cancelada.");
+        return reservationRepository.save(reservation);
     }
 
-    public Reservation softDelete(Integer id){
-        Reservation aux= reservationRepository.findById(id).orElseThrow(()->new IdNotFoundException ("Reservation", id));
-        aux.setIsActive(false);
-        return reservationRepository.save(aux);
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public Reservation completeReservation(Integer id) {
+        Reservation reservation = findByIdForUpdate(id);
+        requireState(reservation, ReservationStatus.CONFIRMED);
+        reservation.setStatus(ReservationStatus.COMPLETED);
+        return reservationRepository.save(reservation);
+    }
 
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public Reservation softDelete(Integer id) {
+        Reservation reservation = findByIdForUpdate(id);
+        reservation.setIsActive(false);
+        return reservationRepository.save(reservation);
     }
 }

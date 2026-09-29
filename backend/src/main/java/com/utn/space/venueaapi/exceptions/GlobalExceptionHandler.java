@@ -27,6 +27,11 @@ public class GlobalExceptionHandler {
                 .body(e.getMessage());
     }
 
+    @ExceptionHandler(ReservationLimitException.class)
+    public ResponseEntity<String> reservationLimit(ReservationLimitException e) {
+        return ResponseEntity.badRequest().body(e.getMessage());
+    }
+
     @ExceptionHandler(SelfReservationException.class)
     public ResponseEntity<String> selfReservation (SelfReservationException e){
         return ResponseEntity

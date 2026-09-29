@@ -122,10 +122,15 @@ class ResourceOwnershipTests {
             "owner,confirm,200", "owner,reject,200", "owner,complete,200", "owner,cancel,200",
             "admin,confirm,200", "admin,reject,200", "admin,complete,200", "admin,cancel,200"})
     void reservationActionsEnforceTheActorRole(String actor, String action, int expectedStatus) throws Exception {
+        if ("complete".equals(action)) {
+            reservation.setStatus(ReservationStatus.CONFIRMED);
+            reservations.saveAndFlush(reservation);
+        }
         mvc.perform(put("/api/reservations/" + action + "/" + reservation.getId())
                         .header("Authorization", token(actor(actor))))
                 .andExpect(status().is(expectedStatus));
-        ReservationStatus expected = expectedStatus == 403 ? ReservationStatus.TENTATIVE : switch (action) {
+        ReservationStatus expected = expectedStatus == 403
+                ? ("complete".equals(action) ? ReservationStatus.CONFIRMED : ReservationStatus.TENTATIVE) : switch (action) {
             case "confirm" -> ReservationStatus.CONFIRMED;
             case "reject" -> ReservationStatus.REJECTED;
             case "complete" -> ReservationStatus.COMPLETED;

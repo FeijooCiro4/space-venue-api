@@ -19,6 +19,7 @@ public class ServiceSelectedService {
     private final ServiceSelectedRepository serviceSelectedRepository;
     @Autowired
     private final ReservationRepository reservationRepository;
+    private final ReservationService reservationService;
     @Autowired
     private final SpaceServiceItemService spaceServiceItemService;
 
@@ -28,6 +29,8 @@ public class ServiceSelectedService {
 
     @Transactional
     public void insertListOfServicesSelectedInAReservation(Integer idReservation, List<ServiceSelectedDTO> servicesSelectedDTO){
+        var reservation = reservationService.findByIdForUpdate(idReservation);
+        reservationService.requireEditable(reservation);
         //Este metodo recibe el id de una reserva y una lista de servicios seleccionados (por servicesSelectedDTO) y los mete en la tabla ServicesSelected
         for(ServiceSelectedDTO serviceSelectedDTO : servicesSelectedDTO){
             serviceSelectedRepository.save(ServiceSelectedMapper.toEntity(serviceSelectedDTO,
@@ -39,8 +42,14 @@ public class ServiceSelectedService {
 
     @Transactional
     public void deleteServiceSelectedForAReservation(Integer id){
+        var selected = serviceSelectedRepository.findById(id)
+                .orElseThrow(() -> new IdNotFoundException("Servicio seleccionado", id));
+        var reservation = reservationService.findByIdForUpdate(selected.getReservation().getId());
+        reservationService.requireEditable(reservation);
         if(!serviceSelectedRepository.existsById(id)) throw new IdNotFoundException("No se encontró el servicio seleccionado para eliminarlo: ", id);
 
+        // Mantener ambos lados: cascade ALL podría volver a persistir el servicio borrado.
+        reservation.getServices().removeIf(service -> service.getId().equals(id));
         serviceSelectedRepository.deleteById(id);
     }
 

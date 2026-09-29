@@ -57,3 +57,20 @@ Es una contraseña maestra que usa el servidor para firmar los tokens JWT. Se ge
 
 revoked_tokens:
 Existe para implementar correctamente los logouts del ususario que ocurran antes de las 10 horas que el JWT dura por default. En cada petición entrante, el servidor consulta la base de datos para comprobar si la huella del token está en la lista de revocados.
+
+## Edición de reservas
+
+La edición conserva la entidad existente, su cliente, fecha de creación, estado y actividad.
+Solo se permite mientras esté `TENTATIVE`, activa y sin pagos registrados. Revalida fechas,
+disponibilidad (excluyendo la propia reserva), espacio activo, autorreserva, límite de cinco
+reservas confirmadas/completadas y servicios del catálogo. Recalcula el precio en el servidor.
+Los importes se redondean a dos decimales. Los campos `status`, `isActive`, `createdAt` y
+`finalPrice` del DTO no cambian esos valores del servidor; un `idConsumer` distinto se rechaza.
+
+
+La edición bloquea la reserva y los espacios involucrados para proteger la validación de
+disponibilidad frente a solicitudes simultáneas. Las pruebas de edición usan H2 e incluyen
+el intento concurrente de mover dos reservas al mismo espacio y horario.
+
+Los cambios de pagos del punto 7 de la auditoría fueron retirados y quedan pendientes.
+Esta corrección de edición no requiere una migración del esquema de pagos.

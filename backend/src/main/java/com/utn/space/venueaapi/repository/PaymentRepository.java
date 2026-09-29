@@ -6,5 +6,7 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface PaymentRepository extends JpaRepository<PaymentModel,Long> {
+    boolean existsByReservation_Id(Integer idReservation);
+
     PaymentModel findByReservation_Id(Integer idReservation);
 }
