@@ -5,6 +5,8 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -18,12 +20,15 @@ public class JwtFilter extends OncePerRequestFilter {
     private final JwtUtil jwtUtil;
     private final TokenBlacklistService blacklistService;
     private final UserDetailsService userDetailsService;
+    private final SecurityErrorResponder errorResponder;
+
 
     // Constructor que permite inyectar el utilitario de manejo de tokens
-    public JwtFilter(JwtUtil jwtUtil, TokenBlacklistService blacklistService, UserDetailsService userDetailsService) {
+    public JwtFilter(JwtUtil jwtUtil, TokenBlacklistService blacklistService, UserDetailsService userDetailsService, SecurityErrorResponder errorResponder) {
         this.jwtUtil = jwtUtil;
         this.blacklistService = blacklistService;
         this.userDetailsService = userDetailsService;
+        this.errorResponder = errorResponder;
     }
 
     @Override
@@ -48,8 +53,8 @@ public class JwtFilter extends OncePerRequestFilter {
             try {
                 username = jwtUtil.extraerUsername(jwt); // Intenta descifrar el username del token
             } catch (Exception e) {
-                logger.warn("Token JWT inválido o expirado.");
-                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token JWT inválido o expirado.");
+                logger.warn("Token JWT inválido o expirado: " + e.getMessage());
+                errorResponder.escribir(response, HttpStatus.UNAUTHORIZED, "La sesión expiró o el token es inválido.");
                 return;
             }
         }
@@ -63,11 +68,11 @@ public class JwtFilter extends OncePerRequestFilter {
                 // Consultar el estado actual: un JWT anterior no debe eludir la baja de la cuenta.
                 try {
                     if (!userDetailsService.loadUserByUsername(username).isEnabled()) {
-                        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Credenciales inválidas");
+                        errorResponder.escribir(response, HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
                         return;
                     }
                 } catch (UsernameNotFoundException e) {
-                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Credenciales inválidas");
+                    errorResponder.escribir(response, HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
                     return;
                 }
 
@@ -87,12 +92,12 @@ public class JwtFilter extends OncePerRequestFilter {
             } else {
                 if (estaEnBlacklist) {
                     logger.warn("Intento de acceso denegado: El token de '" + username + "' está en la Blacklist (Salió por Logout).");
-                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token invalidado por Logout.");
+                    errorResponder.escribir(response, HttpStatus.UNAUTHORIZED, "Token invalidado por Logout.");
                     return;
                 }
                 if (!esValido) {
                     logger.error("¡FALLÓ LA VALIDACIÓN DEL JWT! El jwtUtil determinó que el token para '" + username + "' NO es válido en este entorno local.");
-                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token JWT inválido o expirado en entorno local.");
+                    errorResponder.escribir(response, HttpStatus.UNAUTHORIZED, "La sesión expiró o el token es inválido.");
                     return;
                 }
             }

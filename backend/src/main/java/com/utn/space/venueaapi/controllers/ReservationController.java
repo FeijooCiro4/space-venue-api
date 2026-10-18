@@ -5,6 +5,7 @@ import com.mercadopago.exceptions.MPException;
 import com.utn.space.venueaapi.model.Reservation;
 import com.utn.space.venueaapi.model.flags.Create;
 import com.utn.space.venueaapi.model.flags.Update;
+import com.utn.space.venueaapi.model.records.ErrorResponseDTO;
 import com.utn.space.venueaapi.model.records.ReservationDTO;
 import com.utn.space.venueaapi.security.JwtUtil;
 import com.utn.space.venueaapi.service.ConsumerService;
@@ -53,14 +54,13 @@ public class ReservationController {
 ///---------------------------Metodos------------------------------------------------------------------------------------
     @PostMapping("/{id}/checkout")
     @PreAuthorize("hasRole('CLIENT') and @securityUtils.isReservationOwner(#id, authentication.name)")
-    public ResponseEntity<Map<String, String>> createPaymentPreference(@Parameter(description = "ID de la Reservación") @PathVariable Integer id) {
+    public ResponseEntity<?> createPaymentPreference(@Parameter(description = "ID de la Reservación") @PathVariable Integer id) {
         try {
             Reservation reservation = reservationService.findById(id);
 
             // Validar que la reserva esté confirmada por el dueño antes de poder pagar
             if (!"CONFIRMED".equals(reservation.getStatus().toString())) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body(Collections.singletonMap("error", "La reserva debe ser confirmada por el dueño del espacio antes de poder pagar."));
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponseDTO(400, HttpStatus.BAD_REQUEST.getReasonPhrase(), "La reserva debe ser confirmada por el dueño del espacio antes de poder pagar."));
             }
 
             // Invocar al servicio de Mercado Pago para generar el link
@@ -74,13 +74,10 @@ public class ReservationController {
             String errorMsg = e.getMessage() != null ? e.getMessage() : "Error desconocido en Mercado Pago";
             org.slf4j.LoggerFactory.getLogger(this.getClass())
                     .error("❌ Error de Mercado Pago para reserva {}: {}", id, errorMsg, e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Collections.singletonMap("error", "Error al comunicarse con la pasarela de pagos: " + errorMsg));
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(new ErrorResponseDTO(502, HttpStatus.BAD_GATEWAY.getReasonPhrase(), "Error al comunicarse con la pasarela de pagos"));
         } catch (Exception e) {
-            org.slf4j.LoggerFactory.getLogger(this.getClass())
-                    .error("❌ Error inesperado en checkout para reserva {}: {}", id, e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Collections.singletonMap("error", "Error interno del sistema: " + e.getMessage()));
+            org.slf4j.LoggerFactory.getLogger(this.getClass()).error("❌ Error inesperado en checkout para reserva {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ErrorResponseDTO(500, HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase(), "Error inesperado del sistema"));
         }
     }
 

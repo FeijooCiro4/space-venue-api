@@ -4,6 +4,7 @@ import com.utn.space.venueaapi.model.flags.Create;
 import com.utn.space.venueaapi.model.flags.CreateAdmin;
 import com.utn.space.venueaapi.model.flags.Update;
 import com.utn.space.venueaapi.model.flags.UpdateAdmin;
+import com.utn.space.venueaapi.model.records.MessageResponseDTO;
 import com.utn.space.venueaapi.model.records.SpaceDTO;
 import com.utn.space.venueaapi.model.records.SpaceResponseDTO;
 import com.utn.space.venueaapi.service.mappers.PublicSpaceMapper;
@@ -78,7 +79,7 @@ public class SpaceController {
 
     @PostMapping()
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<String> insertSpace(
+    public ResponseEntity<MessageResponseDTO> insertSpace(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "Entra los datos obligatorios de la creación de un nuevo Espacio",
                     required = true,
@@ -105,7 +106,7 @@ public class SpaceController {
             )
             @Validated(CreateAdmin.class)@RequestBody SpaceDTO spaceDTO){
         spaceService.insertSpace(spaceDTO);
-        return ResponseEntity.ok("Espacio creado exitosamente");
+        return ResponseEntity.ok(new  MessageResponseDTO("Espacio creado exitosamente."));
     }
 
     //Lo que hace @Validated es no permitir que se mande un DTO incompleto
@@ -150,7 +151,7 @@ public class SpaceController {
     @Operation(
             summary = "Modifica un Espacio."
     )
-    public ResponseEntity<String> modifyOwnedSpace(@PathVariable Integer id,
+    public ResponseEntity<MessageResponseDTO> modifyOwnedSpace(@PathVariable Integer id,
                                  @io.swagger.v3.oas.annotations.parameters.RequestBody(
                                          description = "Entra los datos obligatorios de la creación de un nuevo Espacio",
                                          required = true,
@@ -177,7 +178,7 @@ public class SpaceController {
                                  )
                                  @Validated(Update.class)@RequestBody SpaceDTO spaceDTO){
         spaceService.modifyOwnedSpace(id,spaceDTO);
-        return ResponseEntity.ok("Espacio actualizado exitosamente");
+        return ResponseEntity.ok(new MessageResponseDTO("Espacio actualizado exitosamente."));
     }
 
     @PutMapping("/{id}")
@@ -185,7 +186,7 @@ public class SpaceController {
     @Operation(
             summary = "Modifica un Espacio como Admin"
     )
-    public ResponseEntity<String> modifySpace(@PathVariable Integer id,
+    public ResponseEntity<MessageResponseDTO> modifySpace(@PathVariable Integer id,
                             @io.swagger.v3.oas.annotations.parameters.RequestBody(
                                     description = "Entra los datos obligatorios de la creación de un nuevo Espacio",
                                     required = true,
@@ -212,7 +213,7 @@ public class SpaceController {
                             )
                             @Validated(UpdateAdmin.class)@RequestBody SpaceDTO spaceDTO){
         spaceService.modifySpace(id,spaceDTO);
-        return ResponseEntity.ok("Espacio actualizado exitosamente");
+        return ResponseEntity.ok(new MessageResponseDTO("Espacio actualizado exitosamente"));
     }
 
     @PostMapping("/byfields")
@@ -275,9 +276,9 @@ public class SpaceController {
             summary = "Borra un Espacio propio.",
             description = "Borra un Espacio propio por su ID."
     )
-    public ResponseEntity<String> deleteOwnedSpace(@PathVariable Integer id){
+    public ResponseEntity<MessageResponseDTO> deleteOwnedSpace(@PathVariable Integer id){
         spaceService.deleteOwnedSpace(id);
-        return ResponseEntity.ok("Espacio eliminado con exito");
+        return ResponseEntity.ok(new MessageResponseDTO("Espacio eliminado con exito."));
     }
 
 }

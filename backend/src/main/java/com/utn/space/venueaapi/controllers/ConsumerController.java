@@ -1,5 +1,6 @@
 package com.utn.space.venueaapi.controllers;
 
+import com.utn.space.venueaapi.exceptions.InvalidDataException;
 import com.utn.space.venueaapi.model.Consumer;
 import com.utn.space.venueaapi.model.Credential;
 import com.utn.space.venueaapi.model.records.ConsumerFilterDTO;
@@ -7,6 +8,7 @@ import com.utn.space.venueaapi.model.records.ConsumerFilterDTO;
 import com.utn.space.venueaapi.service.ConsumerService;
 import com.utn.space.venueaapi.service.RegistrationService;
 import com.utn.space.venueaapi.model.records.CredentialRegistrationDTO;
+import com.utn.space.venueaapi.model.records.MessageResponseDTO;
 import com.utn.space.venueaapi.model.records.RegistroDTO;
 import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
@@ -42,7 +44,7 @@ public class ConsumerController {
             summary = "Crea un Consummer.",
             description = "Crea un nuevo usuario."
     )
-    public ResponseEntity<String> createUser(
+    public ResponseEntity<MessageResponseDTO> createUser(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "Usuario y contraseña sin codificar",
                     required = true,
@@ -62,7 +64,7 @@ public class ConsumerController {
         registrationService.register(new RegistroDTO("", "", "", "", dto.username(), dto.password()));
 
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body("{\"mensaje\": \"Usuario creado exitosamente\"}");
+                .body(new MessageResponseDTO("Usuario creado exitosamente"));
     }
 
     @GetMapping("/usuarios")
@@ -91,10 +93,10 @@ public class ConsumerController {
             summary = "Cambia el estado de un Usuario.",
             description = "Cambia el estado Activo de un usuario por ID."
     )
-    public ResponseEntity<String> toggleUserStatus(
+    public ResponseEntity<MessageResponseDTO> toggleUserStatus(
+            //(TO DO)Falta la logica para cambiar el estado de un usuario    
             @PathVariable Integer id, @RequestParam Boolean active) {
-        // Tu lógica pendiente de service
-        return ResponseEntity.ok("Estado del usuario actualizado");
+        return ResponseEntity.ok(new MessageResponseDTO("Estado del usuario actualizado"));
     }
 
     //Es para para que el admin filtre consumers
@@ -130,9 +132,9 @@ public class ConsumerController {
     @Operation(
             summary = "Elimina un usuario por ID."
     )
-    public ResponseEntity<String> deleteById(@PathVariable Integer id){
+    public ResponseEntity<MessageResponseDTO> deleteById(@PathVariable Integer id){
         consumerService.deleteUserLogicallyById(id);
-        return ResponseEntity.ok("Usuario desactivado con exito");
+        return ResponseEntity.ok(new MessageResponseDTO("Usuario desactivado con exito"));
     }
 
     @PutMapping("/usuario")
@@ -140,7 +142,7 @@ public class ConsumerController {
     @Operation(
             summary = "Actualiza un Usuario."
     )
-    public ResponseEntity<String> updateUser(
+    public ResponseEntity<MessageResponseDTO> updateUser(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "Entra los datos obligatorios de la creacion de una nueva Reserva",
                     required = true,
@@ -167,20 +169,20 @@ public class ConsumerController {
 
         if (updateData.email() != null && !updateData.email().equals(consumerExistente.getEmail())) {
             if (consumerService.existByEmail(updateData.email())) {
-                throw new RuntimeException("El correo electrónico ya se encuentra registrado por otro usuario.");
+                throw new InvalidDataException("El correo electrónico ya se encuentra registrado por otro usuario.");
             }
             consumerExistente.setEmail(updateData.email());
         }
 
         if (updateData.phone() != null && !updateData.phone().equals(consumerExistente.getPhone())) {
             if (consumerService.existsByPhone(updateData.phone())) {
-                throw new RuntimeException("El telefono ya se encuentra registrado por otro usuario.");
+                throw new InvalidDataException("El telefono ya se encuentra registrado por otro usuario.");
             }
             consumerExistente.setPhone(updateData.phone());
         }
 
         consumerService.updateUser(consumerExistente);
-        return ResponseEntity.ok("Se ha actualizado correctamente tu perfil");
+        return ResponseEntity.ok(new MessageResponseDTO("Se ha actualizado correctamente tu perfil"));
     }
 
     @DeleteMapping("/usuario")
@@ -189,9 +191,9 @@ public class ConsumerController {
             summary = "Elimina un Usuario.",
             description = "Hace un SoftDelete de un usuario."
     )
-    public ResponseEntity<String> deleteUser(Principal principal) {
+    public ResponseEntity<MessageResponseDTO> deleteUser(Principal principal) {
         String username = principal.getName();
         consumerService.deleteUserLogically(username);
-        return ResponseEntity.ok("Tu cuenta ha sido desactivada correctamente.");
+        return ResponseEntity.ok(new MessageResponseDTO("Tu cuenta ha sido desactivada correctamente."));
     }
 }
