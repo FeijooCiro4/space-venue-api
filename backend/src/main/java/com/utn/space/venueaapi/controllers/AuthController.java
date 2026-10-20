@@ -1,6 +1,10 @@
 package com.utn.space.venueaapi.controllers;
 
+import com.mercadopago.net.HttpStatus;
 import com.utn.space.venueaapi.model.Consumer;
+import com.utn.space.venueaapi.model.records.ErrorResponseDTO;
+import com.utn.space.venueaapi.model.records.LoginResponseDTO;
+import com.utn.space.venueaapi.model.records.MessageResponseDTO;
 import com.utn.space.venueaapi.security.JwtUtil;
 import com.utn.space.venueaapi.service.ConsumerService;
 import com.utn.space.venueaapi.service.RegistrationService;
@@ -28,21 +32,21 @@ public class AuthController {
     @Autowired
     private TokenBlacklistService blacklistService;
 
-    @PostMapping("/logout")
-    public ResponseEntity<String> logout(HttpServletRequest request) {
+    @PostMapping("/logout")//La respuesta esta en ? porque se pueden devolver 2 DTO distintos
+    public ResponseEntity<?> logout(HttpServletRequest request) {
         String bearerToken = request.getHeader("Authorization");
         if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
             String jwt = bearerToken.substring(7);
 
             blacklistService.blacklistToken(jwt);
 
-            return ResponseEntity.ok("Sesión cerrada exitosamente y token invalidado.");
+            return ResponseEntity.ok(new MessageResponseDTO("Sesión cerrada exitosamente y token invalidado."));
         }
-        return ResponseEntity.badRequest().body("Token no provisto o inválido.");
+        return ResponseEntity.badRequest().body(new ErrorResponseDTO(400, "Bad Request", "Token no provisto o inválido."));
     }
 
     @PostMapping("/login")
-    public ResponseEntity<String> login(@RequestBody java.util.Map<String, String> loginRequest) {
+    public ResponseEntity<?> login(@RequestBody java.util.Map<String, String> loginRequest) {
         try {
             String username = loginRequest.get("username");
             String password = loginRequest.get("password");
@@ -62,18 +66,18 @@ public class AuthController {
             Integer consumerId = consumer.getIdConsumer();
 
             String token = jwtUtil.generarToken(username, rol, consumerId);
-            return ResponseEntity.ok("Bearer " + token);
+            return ResponseEntity.ok(new LoginResponseDTO(token, "Bearer", rol, consumerId));
         } catch (BadCredentialsException | DisabledException e) {
-            return ResponseEntity.status(401).body("Credenciales inválidas");
+            return ResponseEntity.status(401).body(new ErrorResponseDTO(401, "Unauthorized", "Credenciales inválidas"));
         }
     }
 
     // Cambio el @RequestBody para que reciba record RegistroDTO
     @PostMapping("/register")
-    public ResponseEntity<String> register(@RequestBody com.utn.space.venueaapi.model.records.RegistroDTO dto) {
+    public ResponseEntity<MessageResponseDTO> register(@RequestBody com.utn.space.venueaapi.model.records.RegistroDTO dto) {
 
         registrationService.register(dto);
 
-        return ResponseEntity.status(201).body("Usuario y perfil registrados con éxito");
+        return ResponseEntity.status(HttpStatus.CREATED).body(new MessageResponseDTO("Usuario y perfil registrados con éxito"));
     }
 }
