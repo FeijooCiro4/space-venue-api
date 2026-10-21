@@ -5,6 +5,7 @@ import com.mercadopago.exceptions.MPException;
 import com.utn.space.venueaapi.model.Reservation;
 import com.utn.space.venueaapi.model.flags.Create;
 import com.utn.space.venueaapi.model.flags.Update;
+import com.utn.space.venueaapi.model.records.CheckoutResponseDTO;
 import com.utn.space.venueaapi.model.records.ErrorResponseDTO;
 import com.utn.space.venueaapi.model.records.ReservationDTO;
 import com.utn.space.venueaapi.security.JwtUtil;
@@ -25,10 +26,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import java.security.Principal;
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 
 @RestController
@@ -67,7 +65,7 @@ public class ReservationController {
             String initPointUrl = paymentService.createPreference(reservation);
 
             // Retornar la URL de pago en una respuesta JSON
-            return ResponseEntity.ok(Collections.singletonMap("initPoint", initPointUrl));
+            return ResponseEntity.ok(new CheckoutResponseDTO(initPointUrl));
 
         } catch (MPException | MPApiException e) {
             // Errores específicos del SDK de Mercado Pago (credenciales inválidas, problemas de API, etc.)
@@ -75,9 +73,6 @@ public class ReservationController {
             org.slf4j.LoggerFactory.getLogger(this.getClass())
                     .error("❌ Error de Mercado Pago para reserva {}: {}", id, errorMsg, e);
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(new ErrorResponseDTO(502, HttpStatus.BAD_GATEWAY.getReasonPhrase(), "Error al comunicarse con la pasarela de pagos"));
-        } catch (Exception e) {
-            org.slf4j.LoggerFactory.getLogger(this.getClass()).error("❌ Error inesperado en checkout para reserva {}: {}", id, e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ErrorResponseDTO(500, HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase(), "Error inesperado del sistema"));
         }
     }
 
