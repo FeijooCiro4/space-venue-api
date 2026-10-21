@@ -86,6 +86,7 @@ public class ConsumerService {
         Consumer consumer = findByCredentialsUsername(username);
         return consumer.getIdConsumer();
     }
+
     public void deleteUserLogically(String username) {
         Consumer consumer = consumerRepository.findByUsername(username)
                 .orElseThrow(() -> new NameNotFoundException("Usuario no encontrado"));
@@ -109,6 +110,18 @@ public class ConsumerService {
 
         // Apagamos el flag de activo
         credential.setIsActive(false);
+        consumerRepository.save(consumer);
+    }
+
+    public void reactivateUserById(Integer id) {
+        Consumer consumer = findById(id);
+
+        Credential credential = consumer.getCredentials();
+        if (credential == null) {
+            throw new NameNotFoundException("No se encontraron credenciales para este usuario");
+        }
+
+        credential.setIsActive(true);
         consumerRepository.save(consumer);
     }
 }

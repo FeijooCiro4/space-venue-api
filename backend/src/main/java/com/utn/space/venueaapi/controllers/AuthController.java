@@ -1,6 +1,6 @@
 package com.utn.space.venueaapi.controllers;
 
-import com.mercadopago.net.HttpStatus;
+import org.springframework.http.HttpStatus;
 import com.utn.space.venueaapi.model.Consumer;
 import com.utn.space.venueaapi.model.records.ErrorResponseDTO;
 import com.utn.space.venueaapi.model.records.LoginResponseDTO;

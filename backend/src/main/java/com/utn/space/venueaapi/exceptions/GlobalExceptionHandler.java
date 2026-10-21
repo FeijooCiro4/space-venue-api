@@ -98,11 +98,15 @@ public class GlobalExceptionHandler {
         return construirError(HttpStatus.INTERNAL_SERVER_ERROR, "Error de IO");
     }
 
-    @ExceptionHandler(Exception.class)// un generico por si las dudas
-    public ResponseEntity<ErrorResponseDTO> RespuestaGenerica (Exception ex){
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponseDTO> RespuestaGenerica(Exception ex) {
+        if (ex instanceof org.springframework.web.ErrorResponse er) {
+            return construirError(HttpStatus.valueOf(er.getStatusCode().value()), er.getBody().getDetail());
+        }
         log.error("Error no controlado", ex);
         return construirError(HttpStatus.INTERNAL_SERVER_ERROR, "Error inesperado");
     }
+
 
     private ResponseEntity<ErrorResponseDTO> construirError(HttpStatus status, String mensaje) {
     return ResponseEntity
