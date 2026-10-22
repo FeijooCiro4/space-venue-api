@@ -2,7 +2,7 @@
 
 package com.utn.space.venueaapi.security;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import com.utn.space.venueaapi.model.records.ErrorResponseDTO;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
@@ -14,10 +14,10 @@ import java.io.IOException;
 @Component
 public class SecurityErrorResponder {
 
-    private final ObjectMapper objectMapper;
+    private final JsonMapper jsonMapper; // Spring Boot 4 usa Jackson 3 (tools.jackson)
 
-    public SecurityErrorResponder(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
+    public SecurityErrorResponder(JsonMapper jsonMapper) {
+        this.jsonMapper = jsonMapper;
     }
 
     
@@ -25,7 +25,7 @@ public class SecurityErrorResponder {
     public void escribir(HttpServletResponse response, HttpStatus status, String mensaje) throws IOException {
         response.setStatus(status.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        objectMapper.writeValue(response.getOutputStream(),
+        jsonMapper.writeValue(response.getOutputStream(),
                 new ErrorResponseDTO(status.value(), status.getReasonPhrase(), mensaje));
     }
 }
