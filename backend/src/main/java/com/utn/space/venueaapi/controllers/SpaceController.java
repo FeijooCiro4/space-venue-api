@@ -254,7 +254,7 @@ public class SpaceController {
     @RequestMapping(value = "/byfields/showinactives", method = {RequestMethod.GET, RequestMethod.POST})
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(
-            summary = "Busca TODOS los Espacios Filtrados.",
+            summary = "Busca TODOS los Espacios Filtrados. Funciona como GET Y POST para poder mandar el filtro en el body.",
             description = "Busca TODOS los Espacios Filtrados incluido los inactivos."
     )
     public ResponseEntity<List<SpaceResponseDTO>> findAllByFieldsWithInactives(@RequestBody SpaceFilterDTO spaceFilterDTO){
@@ -264,7 +264,7 @@ public class SpaceController {
     @RequestMapping(value = "/ownedspaces/byfields", method = {RequestMethod.GET, RequestMethod.POST})
     @PreAuthorize("hasAnyRole('CLIENT', 'ADMIN')")
     @Operation(
-            summary = "Busca TODOS los Espacios filtrados de un dueño."
+            summary = "Busca TODOS los Espacios filtrados de un dueño. Funciona como GET Y POST para poder mandar el filtro en el body."
     )
     public ResponseEntity<List<SpaceResponseDTO>> findAllOwnedSpacesbyFields(@RequestBody SpaceFilterDTO spaceFilterDTO){
         return ResponseEntity.ok(spaceService.findAllByFieldsForOwner(spaceFilterDTO).stream().map(PublicSpaceMapper::toDto).toList());
