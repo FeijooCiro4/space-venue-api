@@ -18,6 +18,9 @@ public class Location {
     @Column(name = "id_location")
     private Integer idLocation;
 
+    @Column(precision = 9, scale = 6)
     private BigDecimal longitude;
+
+    @Column(precision = 8, scale = 6)
     private BigDecimal latitude;
 }

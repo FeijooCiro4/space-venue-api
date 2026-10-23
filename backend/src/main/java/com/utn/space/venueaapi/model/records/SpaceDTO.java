@@ -24,34 +24,34 @@ public record SpaceDTO(
         @Schema(description = "ID del dueño. En edición puede omitirse y no permite transferir el espacio.", example = "22")
         Integer idConsumerOwner,
 
-        @NotNull(groups = {Create.class, Update.class})
+        @NotNull(groups = {Create.class, CreateAdmin.class, Update.class})
         @Valid
         @Schema(description = "Una locación")
         LocationDTO location,
 
-        @NotNull(groups = {Create.class, Update.class})
-        @NotBlank(groups = {Create.class, Update.class})
+        @NotNull(groups = {Create.class, CreateAdmin.class, Update.class})
+        @NotBlank(groups = {Create.class, CreateAdmin.class, Update.class})
         @Schema(description = "Una Politica de cancelación")
         String cancellationPolicies,
 
 
-        @NotBlank(groups = {Create.class, Update.class})
+        @NotBlank(groups = {Create.class, CreateAdmin.class, Update.class})
         @Schema(description = "Nombre del Espacio", example = "Salon de Fiestas: Ejemplo")
         String nameSpace,
 
-        @NotBlank(groups = {Create.class, Update.class})
+        @NotBlank(groups = {Create.class, CreateAdmin.class, Update.class})
         @Schema(description = "Descripcion del Espacio")
         String description,
 
-        @NotNull(groups = {Create.class, Update.class})
-        @Positive(groups = {Create.class, Update.class})
+        @NotNull(groups = {Create.class, CreateAdmin.class, Update.class})
+        @Positive(groups = {Create.class, CreateAdmin.class, Update.class})
         @Schema(description = "Precio del alquiler", example = "250000")
         BigDecimal basePrice,
 
         LocalDate publicationDate,
 
-        @NotNull(groups = {Create.class, Update.class})
-        @Positive(groups = {Create.class, Update.class})
+        @NotNull(groups = {Create.class, CreateAdmin.class, Update.class})
+        @Positive(groups = {Create.class, CreateAdmin.class, Update.class})
         @Schema(description = "Tiempo entre alquileres")
         Integer bufferTime,
 
