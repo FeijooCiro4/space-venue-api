@@ -57,7 +57,6 @@ public class Space {
 
     private Boolean isActive;
 
-
     @OneToMany(mappedBy = "space", cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
     @JsonManagedReference
     private List<SpaceServiceItem> services;
