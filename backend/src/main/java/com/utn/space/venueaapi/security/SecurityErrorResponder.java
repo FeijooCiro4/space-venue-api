@@ -2,7 +2,7 @@
 
 package com.utn.space.venueaapi.security;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.utn.space.venueaapi.model.records.ErrorResponseDTO;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
