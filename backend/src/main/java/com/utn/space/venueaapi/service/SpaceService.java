@@ -252,7 +252,7 @@ public class SpaceService {
         space.setDescription(spaceDTO.description());
         space.setBasePrice(spaceDTO.basePrice());
         space.setBufferTime(spaceDTO.bufferTime());
-        space.setIsActive(true);
+        space.setIsActive(false); // Los espacios insertados por el dueño pasan a inactivos hasta que el admin los apruebe
 
         space.setPublicationDate(java.time.LocalDate.now());
 
@@ -297,6 +297,7 @@ public class SpaceService {
         if (!Objects.equals(space.getConsumerOwner().getIdConsumer(), loggedOwnerId)) {
             throw new AccessDeniedException("Debe ser dueño del espacio que desea modificar.");
         }
+        space.setIsActive(false);//Los espacios modificados pasan a inactivos hasta que el admin los apruebe nuevamente
         applyEditableDetails(space, spaceDTO);
     }
 
