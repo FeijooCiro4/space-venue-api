@@ -16,6 +16,8 @@ public class SpaceImageService {
     SpaceImageRepository spaceImageRepository;
     @Autowired
     SpaceService spaceService;
+    @Autowired
+    ImageStorageService imageStorageService;
 
     public List<SpaceImage> findAll(){
         return spaceImageRepository.findAll();
@@ -26,10 +28,12 @@ public class SpaceImageService {
     }
 
     public void deleteById(Integer id){
-        if(!spaceImageRepository.existsById(id)){
-            throw new IdNotFoundException("No se encontro la imagen a eliminar: ", id);
-        }
+        SpaceImage spaceImage = spaceImageRepository.findById(id).orElseThrow(()-> new IdNotFoundException("No se encontro la imagen a eliminar: ", id));
         spaceImageRepository.deleteById(id);
+
+        if(spaceImage.getUrlImage() != null && spaceImage.getUrlImage().startsWith("media/")){
+            imageStorageService.deleteObject(spaceImage.getUrlImage());
+        }
     }
 
     public void insertSpaceImage(SpaceImageDTO spaceImageDTO){
@@ -39,6 +43,11 @@ public class SpaceImageService {
 
         if(spaceImageDTO.urlImage().isBlank()){
             throw new InvalidDataException("Por favor ingrese un URL para la imagen");
+        }
+
+        // urlImage es la key devuelta por /upload-url; evita asociar al espacio imágenes de otro
+        if(!spaceImageDTO.urlImage().startsWith(ImageStorageService.keyPrefixForSpace(spaceImageDTO.idSpace()))){
+            throw new InvalidDataException("La imagen no corresponde a este espacio");
         }
 
         SpaceImage spaceImageToInsert = new SpaceImage(
@@ -64,6 +73,11 @@ public class SpaceImageService {
 
         if(spaceImageDTO.urlImage().isBlank()){
             throw new InvalidDataException("Por favor ingrese un URL para la imagen");
+        }
+
+        // urlImage es la key devuelta por /upload-url; evita asociar al espacio imágenes de otro
+        if(!spaceImageDTO.urlImage().startsWith(ImageStorageService.keyPrefixForSpace(spaceImageDTO.idSpace()))){
+            throw new InvalidDataException("La imagen no corresponde a este espacio");
         }
 
         SpaceImage spaceImageToInsert = new SpaceImage(
