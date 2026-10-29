@@ -77,6 +77,16 @@ public class SpaceController {
         spaceService.deleteById(id);
     }
 
+    @PutMapping("/{id}/active")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Activa o desactiva cualquier Espacio por su ID."
+    )
+    public ResponseEntity<MessageResponseDTO> setSpaceActive(@PathVariable Integer id, @RequestParam Boolean active){
+        spaceService.setActive(id, active);
+        return ResponseEntity.ok(new MessageResponseDTO(active ? "Espacio activado." : "Espacio desactivado."));
+    }
+
     @PostMapping()
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<MessageResponseDTO> insertSpace(

@@ -64,6 +64,14 @@ public class SpaceService {
         spaceRepository.save(space);
     }
 
+    //Permite al admin activar o desactivar un espacio (aprobar o dar de baja)
+    @Transactional
+    public void setActive(Integer id, Boolean active){
+        Space space = findById(id);
+        space.setIsActive(active);
+        spaceRepository.save(space);
+    }
+
     @Transactional(rollbackFor = Exception.class)
     public void insertSpace(SpaceDTO spaceDTO){
         if(spaceDTO.nameSpace().isBlank()){
