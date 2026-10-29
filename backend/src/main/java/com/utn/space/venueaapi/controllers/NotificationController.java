@@ -1,9 +1,16 @@
 package com.utn.space.venueaapi.controllers;
 
 import com.utn.space.venueaapi.model.Notification;
+import com.utn.space.venueaapi.model.records.NotificationCreateDTO;
+import com.utn.space.venueaapi.service.ConsumerService;
 import com.utn.space.venueaapi.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -11,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
 import java.util.Objects;
@@ -25,8 +33,47 @@ import java.time.ZoneOffset;
 public class NotificationController {
     @Autowired
     private NotificationService notificationService;
+    @Autowired
+    private ConsumerService consumerService;
 
 ///------------------------------------------------Metodos--------------------------------------------------------------------
+    @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'CLIENT')")
+    @Operation(
+            summary = "Registra una notificación automática para un usuario.",
+            description = "Permite al front registrar una notificación generada por el sistema para el usuario indicado."
+    )
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            description = "Identificador del destinatario y mensaje de la notificación.",
+            required = true,
+            content = @Content(
+                    schema = @Schema(implementation = NotificationCreateDTO.class),
+                    examples = @ExampleObject(
+                            name = "Nueva notificación",
+                            value = """
+                                    {
+                                      "idConsumer": 15,
+                                      "message": "Tu reserva fue confirmada."
+                                    }
+                                    """
+                    )
+            )
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Notificación creada",
+                    content = @Content(schema = @Schema(implementation = Map.class))),
+            @ApiResponse(responseCode = "400", description = "Datos inválidos"),
+            @ApiResponse(responseCode = "403", description = "Se requiere rol CLIENT o ADMIN"),
+            @ApiResponse(responseCode = "404", description = "No se encontró el usuario destinatario")
+    })
+    public ResponseEntity<Map<String, Object>> createNotification(@Valid @RequestBody NotificationCreateDTO request) {
+        Notification created = notificationService.createNotification(
+                consumerService.findById(request.idConsumer()),
+                request.message()
+        );
+        return ResponseEntity.status(HttpStatus.CREATED).body(toDto(created));
+    }
+
     @GetMapping
     @Operation(
             summary = "Busca todas las notificaciones (solo para ADMIN).",
