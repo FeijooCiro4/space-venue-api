@@ -7,6 +7,7 @@ import com.utn.space.venueaapi.model.records.LoginResponseDTO;
 import com.utn.space.venueaapi.model.records.MessageResponseDTO;
 import com.utn.space.venueaapi.security.JwtUtil;
 import com.utn.space.venueaapi.service.ConsumerService;
+import com.utn.space.venueaapi.service.NotificationService;
 import com.utn.space.venueaapi.service.RegistrationService;
 import com.utn.space.venueaapi.service.TokenBlacklistService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -28,6 +29,7 @@ public class AuthController {
     private final JwtUtil jwtUtil;
     private final RegistrationService registrationService;
     private final ConsumerService consumerService;
+    private final NotificationService notificationService;
 
     @Autowired
     private TokenBlacklistService blacklistService;
@@ -77,6 +79,23 @@ public class AuthController {
     public ResponseEntity<MessageResponseDTO> register(@RequestBody com.utn.space.venueaapi.model.records.RegistroDTO dto) {
 
         registrationService.register(dto);
+        Consumer consumer = consumerService.findByCredentialsUsername(dto.username());
+        notificationService.createNotification(
+                consumer,
+                "¡Bienvenido a Space&Venue!
+                 Gracias por sumarte a Space&Venue, la plataforma para encontrar y publicar espacios para eventos, reuniones y producciones. Tu cuenta ya está lista para usarse.
+                 Acá podés:
+                 -Explorar la lista de espacios disponibles y ordenarlos por nombre o por precio para encontrar el que mejor se adapte a lo que buscás.
+                 -Publicar tu propio espacio desde “Crear un espacio”: cargá su nombre, descripción, precio base, tiempo de receso entre reservas y ubicación.
+                 -Gestionar lo que publicaste desde “Mis espacios”.
+                 -Mantener tus datos al día desde “Mi perfil”.
+                 
+                 Cada novedad importante te va a llegar como una notificación en esta misma sección, así que fijate de vez en cuando en el ícono del sobre de la barra superior.
+                 Si tenés dudas o algo no funciona como esperabas, escribinos. Estamos para ayudarte.
+                 ¡Que disfrutes la experiencia!
+    
+                -El equipo de Space&Venue"
+        );
 
         return ResponseEntity.status(HttpStatus.CREATED).body(new MessageResponseDTO("Usuario y perfil registrados con éxito"));
     }
