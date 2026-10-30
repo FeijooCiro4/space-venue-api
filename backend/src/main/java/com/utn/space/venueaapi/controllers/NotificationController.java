@@ -160,6 +160,17 @@ public class NotificationController {
         return ResponseEntity.status(HttpStatus.OK).body(toDto(updated));
     }
 
+    @PatchMapping("/me/read")
+    @PreAuthorize("hasAnyRole('CLIENT', 'ADMIN')")
+    @Operation(
+            summary = "Marca como vistas todas las notificaciones del usuario autenticado.",
+            description = "Actualiza únicamente las notificaciones no vistas del usuario autenticado."
+    )
+    public ResponseEntity<Map<String, Integer>> markAllAsSeenForMe() {
+        int updatedCount = notificationService.markAllAsSeenForLoggedConsumer();
+        return ResponseEntity.ok(Map.of("updatedCount", updatedCount));
+    }
+
     // --- Helper para serializar Notification con timestamp UTC en milisegundos ---
     private Map<String, Object> toDto(Notification n) {
         Map<String, Object> m = new HashMap<>();

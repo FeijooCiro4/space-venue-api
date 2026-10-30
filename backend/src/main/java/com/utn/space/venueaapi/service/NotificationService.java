@@ -35,6 +35,10 @@ public class NotificationService {
         return notificationRepository.save(aux);
     }
 
+    public int markAllAsSeenForLoggedConsumer() {
+        return notificationRepository.markAllAsSeenByConsumerId(consumerService.getLoggedConsumerId());
+    }
+
     public List<Notification> listAllByIdConsumer (Integer id){
         return notificationRepository.findByConsumer_IdConsumer(id);
     }
@@ -42,12 +46,13 @@ public class NotificationService {
     public List<Notification> listAllByIdConsumerForConsumer(){
         List<Notification> notificationList = notificationRepository.findByConsumer_IdConsumer(consumerService.getLoggedConsumerId());
 
-        for (Notification notification : notificationList){
+        /*for (Notification notification : notificationList){
             if(!notification.getIsSeen()){
                 markAsSeen(notification.getIdNotification()); //Marco cada una de las notificaciones mostradas como vistas
             }
         }
-
+        Se marca como comentada ya que no tiene una funcion util
+        */ 
         return notificationList;
     }
 
@@ -57,10 +62,11 @@ public class NotificationService {
         //filtro las notificacion ya vistas.
         notificationList = notificationList.stream().filter(notification -> !notification.getIsSeen()).toList();
 
-        for (Notification notification : notificationList){
+        /*for (Notification notification : notificationList){
             markAsSeen(notification.getIdNotification()); //Marco cada una de las notificaciones mostradas como vistas
         }
-
+        Se marca como comentada ya que no tiene una funcion util
+        */
         return notificationList;
     }
 
