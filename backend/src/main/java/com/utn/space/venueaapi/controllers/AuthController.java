@@ -82,7 +82,8 @@ public class AuthController {
         Consumer consumer = consumerService.findByCredentialsUsername(dto.username());
         notificationService.createNotification(
                 consumer,
-                "¡Bienvenido a Space&Venue!
+                """ 
+                 ¡Bienvenido a Space&Venue!
                  Gracias por sumarte a Space&Venue, la plataforma para encontrar y publicar espacios para eventos, reuniones y producciones. Tu cuenta ya está lista para usarse.
                  Acá podés:
                  -Explorar la lista de espacios disponibles y ordenarlos por nombre o por precio para encontrar el que mejor se adapte a lo que buscás.
@@ -94,7 +95,7 @@ public class AuthController {
                  Si tenés dudas o algo no funciona como esperabas, escribinos. Estamos para ayudarte.
                  ¡Que disfrutes la experiencia!
     
-                -El equipo de Space&Venue"
+                -El equipo de Space&Venue"""
         );
 
         return ResponseEntity.status(HttpStatus.CREATED).body(new MessageResponseDTO("Usuario y perfil registrados con éxito"));
