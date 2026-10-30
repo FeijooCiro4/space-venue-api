@@ -2,15 +2,19 @@ package com.utn.space.venueaapi.controllers;
 
 import com.utn.space.venueaapi.model.flags.Create;
 import com.utn.space.venueaapi.model.flags.Update;
+import com.utn.space.venueaapi.model.records.ImageUploadUrlRequestDTO;
+import com.utn.space.venueaapi.model.records.ImageUploadUrlResponseDTO;
 import com.utn.space.venueaapi.model.records.SpaceImageDTO;
 import com.utn.space.venueaapi.model.records.SpaceImageResponseDTO;
 import com.utn.space.venueaapi.service.mappers.PublicSpaceMapper;
+import com.utn.space.venueaapi.service.ImageStorageService;
 import com.utn.space.venueaapi.service.SpaceImageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -26,6 +30,8 @@ import java.util.List;
 public class SpaceImageController {
     @Autowired
     SpaceImageService spaceImagesService;
+    @Autowired
+    ImageStorageService imageStorageService;
 
     @GetMapping
     @Operation(
@@ -52,6 +58,16 @@ public class SpaceImageController {
         spaceImagesService.deleteById(id);
     }
 
+    @PostMapping("/upload-url")
+    @PreAuthorize("hasRole('ADMIN') or @securityUtils.isSpaceOwner(#request.idSpace(), authentication.name)")
+    @Operation(
+            summary = "Genera una URL para subir una Imagen directamente a S3.",
+            description = "El cliente hace un PUT del archivo a uploadUrl (con el mismo Content-Type) y después crea la Imagen con urlImage = key."
+    )
+    public ResponseEntity<ImageUploadUrlResponseDTO> createUploadUrl(@Valid @RequestBody ImageUploadUrlRequestDTO request){
+        return ResponseEntity.ok(imageStorageService.createUploadUrl(request));
+    }
+
     @PostMapping()
     @PreAuthorize("hasRole('ADMIN') or @securityUtils.isSpaceOwner(#spaceImageDTO.idSpace(), authentication.name)")
     @Operation(
@@ -71,7 +87,7 @@ public class SpaceImageController {
                                       "idImage": null,
                                       "idSpace":74,
                                       "fileName":"Cocina.jpg",
-                                      "urlImage":,
+                                      "urlImage":"media/spaces/74/3f2b6c1e-8a4d-4c1b-9e7a-2d5f0b9c1a3e.jpg",
                                       "dateSend":"2026-09-15T21:00:00"}
                                     """)
                     )
@@ -99,7 +115,7 @@ public class SpaceImageController {
                                       "idImage": null,
                                       "idSpace":74,
                                       "fileName":"Cocina.jpg",
-                                      "urlImage":,
+                                      "urlImage":"media/spaces/74/3f2b6c1e-8a4d-4c1b-9e7a-2d5f0b9c1a3e.jpg",
                                       "dateSend":"2026-09-15T21:00:00"}
                                     """)
                                          )

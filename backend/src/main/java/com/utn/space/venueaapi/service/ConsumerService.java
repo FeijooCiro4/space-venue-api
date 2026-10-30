@@ -66,6 +66,7 @@ public class ConsumerService {
         }
         consumerRepository.deleteById(id);
     }
+    
     public void updateUser(Consumer consumer) throws IdNotFoundException{
         if(consumerRepository.existsById(consumer.getIdConsumer())){
             consumerRepository.save(consumer);

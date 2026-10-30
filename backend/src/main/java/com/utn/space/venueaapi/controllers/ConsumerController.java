@@ -7,9 +7,11 @@ import com.utn.space.venueaapi.model.records.ConsumerFilterDTO;
 
 import com.utn.space.venueaapi.service.ConsumerService;
 import com.utn.space.venueaapi.service.RegistrationService;
+import com.utn.space.venueaapi.service.TokenBlacklistService;
 import com.utn.space.venueaapi.model.records.CredentialRegistrationDTO;
 import com.utn.space.venueaapi.model.records.MessageResponseDTO;
 import com.utn.space.venueaapi.model.records.RegistroDTO;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -38,6 +40,9 @@ public class ConsumerController {
 
     @Autowired
     private final RegistrationService registrationService;
+
+    @Autowired
+    private final TokenBlacklistService blacklistService;
 
     @PostMapping("/usuarios")
     @Operation(
@@ -191,9 +196,15 @@ public class ConsumerController {
             summary = "Elimina un Usuario.",
             description = "Hace un SoftDelete de un usuario."
     )
-    public ResponseEntity<MessageResponseDTO> deleteUser(Principal principal) {
+    public ResponseEntity<MessageResponseDTO> deleteUser(Principal principal, HttpServletRequest request) {
         String username = principal.getName();
         consumerService.deleteUserLogically(username);
+
+        // Invalida el token usado en la baja, igual que en el logout
+        String bearerToken = request.getHeader("Authorization");
+        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+            blacklistService.blacklistToken(bearerToken.substring(7));
+        }
         return ResponseEntity.ok(new MessageResponseDTO("Tu cuenta ha sido desactivada correctamente."));
     }
 }
