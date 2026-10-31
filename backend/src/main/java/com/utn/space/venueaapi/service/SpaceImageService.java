@@ -92,7 +92,7 @@ public class SpaceImageService {
     }
 
     public List<SpaceImage> findAllBySpaceId(Integer spaceId){
-        if(!spaceService.existsById(spaceId)){
+        if(!spaceService.existsByIdIncludingInactive(spaceId)){
             throw new IdNotFoundException("No se encontro el espacio del cual se quieren buscar imagenes: ", spaceId);
         }
         return spaceImageRepository.findAllBySpaceIdSpace(spaceId);
