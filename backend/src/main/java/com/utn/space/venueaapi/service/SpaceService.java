@@ -43,6 +43,10 @@ public class SpaceService {
         return spaceRepository.existsByIdSpaceAndIsActiveTrue(id);
     }
 
+    public Boolean existsByIdIncludingInactive(Integer id){
+        return spaceRepository.existsById(id);
+    }
+
     public Space findById(Integer id){
         return spaceRepository.findById(id).orElseThrow(()-> new IdNotFoundException("Space", id));
     }
