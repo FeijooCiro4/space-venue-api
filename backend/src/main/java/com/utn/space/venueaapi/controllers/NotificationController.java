@@ -130,7 +130,7 @@ public class NotificationController {
             summary = "Busca todas las notificaciones, no vistas, de un Usuario.",
             description = "Devuelve la lista de las Notificaciones con el Atributo (isSeen = false) un Usuario."
     )
-    @PreAuthorize("hasRole('CLIENT')")
+    @PreAuthorize("hasAnyRole('CLIENT', 'ADMIN')")
     public ResponseEntity<List<Map<String, Object>>> findAllUnseenByIdconsumer(){
         List<Map<String, Object>> out = notificationService.listAllUnseenForConsumer().stream().map(this::toDto).toList();
         return ResponseEntity.ok(out);
