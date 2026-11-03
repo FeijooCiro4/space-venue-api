@@ -1,0 +1,18 @@
+# Copiar a /etc/systemd/system/space-venue-api.service en la EC2.
+[Unit]
+Description=Space & Venue API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=spacevenue
+WorkingDirectory=/opt/space-venue-api
+EnvironmentFile=/etc/space-venue-api/app.env
+ExecStart=/usr/bin/java -jar /opt/space-venue-api/app.jar
+# Spring Boot termina con 143 al recibir SIGTERM: no es un error.
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
