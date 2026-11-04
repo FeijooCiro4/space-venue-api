@@ -140,7 +140,7 @@ public class SpaceService {
         } catch (IllegalArgumentException | NullPointerException e) {
             throw new InvalidDataException("La política de cancelación no es válida.");
         }
-        Location location = locationService.findByLongitudeAndLatitude(dto.location().longitude(), dto.location().latitude());
+        Location location = resolveEditedLocation(space.getLocation(), dto.location().longitude(), dto.location().latitude());
         CancellationPolicies cancellation = cancellationPoliciesService.findByType(policy);
         space.setNameSpace(dto.nameSpace());
         space.setDescription(dto.description());
@@ -149,6 +149,17 @@ public class SpaceService {
         space.setLocation(location);
         space.setCancellationPolicies(cancellation);
         // Conservar propietario, actividad, publicación y catálogo. Los servicios tienen sus propias rutas.
+    }
+
+    //Si las coordenadas no cambiaron se conserva la ubicación actual; si cambiaron se crea una nueva
+    //(no se modifica la existente porque podría estar compartida con otro espacio)
+    private Location resolveEditedLocation(Location current, BigDecimal longitude, BigDecimal latitude) {
+        if (current != null && current.getLongitude() != null && current.getLatitude() != null
+                && current.getLongitude().compareTo(longitude) == 0
+                && current.getLatitude().compareTo(latitude) == 0) {
+            return current;
+        }
+        return locationService.create(longitude, latitude);
     }
 
     //Este metodo maneja solo espacios activos
