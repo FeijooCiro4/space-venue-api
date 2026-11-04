@@ -153,13 +153,13 @@ public class SpaceService {
         // Conservar propietario, actividad, publicación y catálogo. Los servicios tienen sus propias rutas.
     }
 
-    //Se llama antes de agregar, modificar o borrar imágenes de un espacio.
+    //Se llama antes de agregar, modificar o borrar imágenes o servicios de un espacio.
     //Igual que al editar los datos: si el cambio lo hace el dueño, el espacio vuelve a quedar pendiente de aprobación.
     //Los cambios del admin no lo desactivan (como en modifySpace).
-    public void onImagesChanged(Space space) {
+    public void onContentChangedByOwner(Space space) {
         if (!isLoggedUserOwner(space)) return;
         if (isDeletedByOwner(space)) {
-            throw new InvalidDataException("No se pueden modificar las imágenes de un espacio eliminado.");
+            throw new InvalidDataException("No se puede modificar un espacio eliminado.");
         }
         space.setIsActive(false);
         spaceRepository.save(space);

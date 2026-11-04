@@ -32,7 +32,7 @@ public class SpaceImageService {
     @Transactional
     public void deleteById(Integer id){
         SpaceImage spaceImage = spaceImageRepository.findById(id).orElseThrow(()-> new IdNotFoundException("No se encontro la imagen a eliminar: ", id));
-        spaceService.onImagesChanged(spaceImage.getSpace());
+        spaceService.onContentChangedByOwner(spaceImage.getSpace());
         spaceImageRepository.deleteById(id);
 
         if(spaceImage.getUrlImage() != null && spaceImage.getUrlImage().startsWith("media/")){
@@ -56,7 +56,7 @@ public class SpaceImageService {
         }
 
         Space space = spaceService.findById(spaceImageDTO.idSpace());
-        spaceService.onImagesChanged(space);
+        spaceService.onContentChangedByOwner(space);
 
         SpaceImage spaceImageToInsert = new SpaceImage(
                 null,
@@ -90,7 +90,7 @@ public class SpaceImageService {
         }
 
         Space space = spaceService.findById(spaceImageDTO.idSpace());
-        spaceService.onImagesChanged(space);
+        spaceService.onContentChangedByOwner(space);
 
         SpaceImage spaceImageToInsert = new SpaceImage(
                 id,
