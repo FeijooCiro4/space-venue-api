@@ -3,10 +3,12 @@ package com.utn.space.venueaapi.service;
 import com.utn.space.venueaapi.exceptions.IdNotFoundException;
 import com.utn.space.venueaapi.exceptions.InvalidDataException;
 import com.utn.space.venueaapi.model.records.SpaceImageDTO;
+import com.utn.space.venueaapi.model.Space;
 import com.utn.space.venueaapi.model.SpaceImage;
 import com.utn.space.venueaapi.repository.SpaceImageRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -27,8 +29,10 @@ public class SpaceImageService {
         return spaceImageRepository.findById(id).orElseThrow(()-> new IdNotFoundException("No se encontro la imagen buscada: ", id));
     }
 
+    @Transactional
     public void deleteById(Integer id){
         SpaceImage spaceImage = spaceImageRepository.findById(id).orElseThrow(()-> new IdNotFoundException("No se encontro la imagen a eliminar: ", id));
+        spaceService.onImagesChanged(spaceImage.getSpace());
         spaceImageRepository.deleteById(id);
 
         if(spaceImage.getUrlImage() != null && spaceImage.getUrlImage().startsWith("media/")){
@@ -36,6 +40,7 @@ public class SpaceImageService {
         }
     }
 
+    @Transactional
     public void insertSpaceImage(SpaceImageDTO spaceImageDTO){
         if(spaceImageDTO.fileName().isBlank()){
             throw new InvalidDataException("Por favor ingrese un nombre para la imagen");
@@ -50,9 +55,12 @@ public class SpaceImageService {
             throw new InvalidDataException("La imagen no corresponde a este espacio");
         }
 
+        Space space = spaceService.findById(spaceImageDTO.idSpace());
+        spaceService.onImagesChanged(space);
+
         SpaceImage spaceImageToInsert = new SpaceImage(
                 null,
-                spaceService.findById(spaceImageDTO.idSpace()),
+                space,
                 spaceImageDTO.fileName(),
                 spaceImageDTO.urlImage(),
                 spaceImageDTO.dateSend()
@@ -62,6 +70,7 @@ public class SpaceImageService {
     }
 
 
+    @Transactional
     public void modifySpaceImage(Integer id, SpaceImageDTO spaceImageDTO){
         if(!spaceImageRepository.existsById(id)){
             throw new IdNotFoundException("No se encontro la imagen a actualizar: ", id);
@@ -80,9 +89,12 @@ public class SpaceImageService {
             throw new InvalidDataException("La imagen no corresponde a este espacio");
         }
 
+        Space space = spaceService.findById(spaceImageDTO.idSpace());
+        spaceService.onImagesChanged(space);
+
         SpaceImage spaceImageToInsert = new SpaceImage(
                 id,
-                spaceService.findById(spaceImageDTO.idSpace()),
+                space,
                 spaceImageDTO.fileName(),
                 spaceImageDTO.urlImage(),
                 spaceImageDTO.dateSend()

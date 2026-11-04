@@ -10,6 +10,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -149,6 +151,25 @@ public class SpaceService {
         space.setLocation(location);
         space.setCancellationPolicies(cancellation);
         // Conservar propietario, actividad, publicación y catálogo. Los servicios tienen sus propias rutas.
+    }
+
+    //Se llama antes de agregar, modificar o borrar imágenes de un espacio.
+    //Igual que al editar los datos: si el cambio lo hace el dueño, el espacio vuelve a quedar pendiente de aprobación.
+    //Los cambios del admin no lo desactivan (como en modifySpace).
+    public void onImagesChanged(Space space) {
+        if (!isLoggedUserOwner(space)) return;
+        if (isDeletedByOwner(space)) {
+            throw new InvalidDataException("No se pueden modificar las imágenes de un espacio eliminado.");
+        }
+        space.setIsActive(false);
+        spaceRepository.save(space);
+    }
+
+    private boolean isLoggedUserOwner(Space space) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        var owner = space.getConsumerOwner();
+        return auth != null && owner != null && owner.getCredentials() != null
+                && Objects.equals(owner.getCredentials().getUsername(), auth.getName());
     }
 
     //Si las coordenadas no cambiaron se conserva la ubicación actual; si cambiaron se crea una nueva
