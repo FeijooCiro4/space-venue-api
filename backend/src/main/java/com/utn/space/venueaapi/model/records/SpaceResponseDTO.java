@@ -9,7 +9,7 @@ public record SpaceResponseDTO(
         Integer idSpace, PublicOwner consumerOwner, PublicLocation location,
         PublicCancellationPolicy cancellationPolicies, String nameSpace, String description,
         BigDecimal basePrice, LocalDate publicationDate, Integer bufferTime,
-        Boolean isActive, List<PublicService> services
+        Boolean isActive, Boolean deletedByOwner, List<PublicService> services
 ) {
     public record PublicOwner(Integer idConsumer, String firstname, String lastname) {}
     public record PublicLocation(Integer idLocation, BigDecimal longitude, BigDecimal latitude) {}

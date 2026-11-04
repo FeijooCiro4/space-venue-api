@@ -72,6 +72,9 @@ public class SpaceService {
     @Transactional
     public void setActive(Integer id, Boolean active){
         Space space = findById(id);
+        if (Boolean.TRUE.equals(active) && isDeletedByOwner(space)) {
+            throw new InvalidDataException("No se puede activar un espacio que fue eliminado por su dueño.");
+        }
         space.setIsActive(active);
         spaceRepository.save(space);
     }
@@ -226,7 +229,7 @@ public class SpaceService {
                 null
         );
 
-        return findAllByFieldsWithInactives(auxDTO);
+        return withoutDeletedByOwner(findAllByFieldsWithInactives(auxDTO));
     }
 
     public List<Space> findAllByFieldsForOwner(SpaceFilterDTO spaceFilterDTO){
@@ -242,9 +245,19 @@ public class SpaceService {
                 spaceFilterDTO.radious()
         );
 
-        return findAllByFieldsWithInactives(auxDTO);
+        return withoutDeletedByOwner(findAllByFieldsWithInactives(auxDTO));
     }
 
+    //Los espacios eliminados por el dueño no se le muestran más en sus listados
+    private List<Space> withoutDeletedByOwner(List<Space> spaces) {
+        return spaces.stream().filter(space -> !isDeletedByOwner(space)).toList();
+    }
+
+    private boolean isDeletedByOwner(Space space) {
+        return Boolean.TRUE.equals(space.getDeletedByOwner());
+    }
+
+    //Soft delete hecho por el dueño: queda inactivo y marcado como eliminado para distinguirlo de un espacio pendiente de aprobación
     @Transactional
     public void deleteOwnedSpace(Integer id){
         Integer loggedOwnerId = consumerService.getLoggedConsumerId();
@@ -253,7 +266,12 @@ public class SpaceService {
         if(!Objects.equals(spaceToDelete.getConsumerOwner().getIdConsumer(), loggedOwnerId)){
             throw new InvalidDataException("Debe ser duenio de el espacio que desdea eliminar");
         }
-        deleteById(id);
+        if (isDeletedByOwner(spaceToDelete)) {
+            throw new InvalidDataException("El espacio ya fue eliminado.");
+        }
+        spaceToDelete.setIsActive(false);
+        spaceToDelete.setDeletedByOwner(true);
+        spaceRepository.save(spaceToDelete);
     }
 
     @Transactional
@@ -308,6 +326,9 @@ public class SpaceService {
         Space space = findByIdForUpdate(id);
         if (!Objects.equals(space.getConsumerOwner().getIdConsumer(), loggedOwnerId)) {
             throw new AccessDeniedException("Debe ser dueño del espacio que desea modificar.");
+        }
+        if (isDeletedByOwner(space)) {
+            throw new InvalidDataException("No se puede modificar un espacio eliminado.");
         }
         space.setIsActive(false);//Los espacios modificados pasan a inactivos hasta que el admin los apruebe nuevamente
         applyEditableDetails(space, spaceDTO);
