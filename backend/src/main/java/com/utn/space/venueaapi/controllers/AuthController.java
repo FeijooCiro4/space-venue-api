@@ -12,6 +12,7 @@ import com.utn.space.venueaapi.service.RegistrationService;
 import com.utn.space.venueaapi.service.TokenBlacklistService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -21,6 +22,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+@Slf4j
 @AllArgsConstructor
 @RestController
 @RequestMapping("/api/auth")
@@ -79,24 +81,30 @@ public class AuthController {
     public ResponseEntity<MessageResponseDTO> register(@RequestBody com.utn.space.venueaapi.model.records.RegistroDTO dto) {
 
         registrationService.register(dto);
-        Consumer consumer = consumerService.findByCredentialsUsername(dto.username());
-        notificationService.createNotification(
-                consumer,
-                """ 
-                 ¡Bienvenido a Space&Venue!
-                 Gracias por sumarte a Space&Venue, la plataforma para encontrar y publicar espacios para eventos, reuniones y producciones. Tu cuenta ya está lista para usarse.
-                 Acá podés:
-                 -Explorar la lista de espacios disponibles y ordenarlos por nombre o por precio para encontrar el que mejor se adapte a lo que buscás.
-                 -Publicar tu propio espacio desde “Crear un espacio”: cargá su nombre, descripción, precio base, tiempo de receso entre reservas y ubicación.
-                 -Gestionar lo que publicaste desde “Mis espacios”.
-                 -Mantener tus datos al día desde “Mi perfil”.
-                 
-                 Cada novedad importante te va a llegar como una notificación en esta misma sección, así que fijate de vez en cuando en el ícono del sobre de la barra superior.
-                 Si tenés dudas o algo no funciona como esperabas, escribinos. Estamos para ayudarte.
-                 ¡Que disfrutes la experiencia!
-    
-                -El equipo de Space&Venue"""
-        );
+        // La notificación de bienvenida no debe hacer fallar el registro:
+        // el usuario ya quedó guardado en la transacción de registrationService.register().
+        try {
+            Consumer consumer = consumerService.findByCredentialsUsername(dto.username());
+            notificationService.createNotification(
+                    consumer,
+                    """ 
+                     ¡Bienvenido a Space&Venue!
+                     Gracias por sumarte a Space&Venue, la plataforma para encontrar y publicar espacios para eventos, reuniones y producciones. Tu cuenta ya está lista para usarse.
+                     Acá podés:
+                     -Explorar la lista de espacios disponibles y ordenarlos por nombre o por precio para encontrar el que mejor se adapte a lo que buscás.
+                     -Publicar tu propio espacio desde “Crear un espacio”: cargá su nombre, descripción, precio base, tiempo de receso entre reservas y ubicación.
+                     -Gestionar lo que publicaste desde “Mis espacios”.
+                     -Mantener tus datos al día desde “Mi perfil”.
+                     
+                     Cada novedad importante te va a llegar como una notificación en esta misma sección, así que fijate de vez en cuando en el ícono del sobre de la barra superior.
+                     Si tenés dudas o algo no funciona como esperabas, escribinos. Estamos para ayudarte.
+                     ¡Que disfrutes la experiencia!
+        
+                    -El equipo de Space&Venue"""
+            );
+        } catch (Exception e) {
+            log.error("No se pudo crear la notificación de bienvenida para '{}'", dto.username(), e);
+        }
 
         return ResponseEntity.status(HttpStatus.CREATED).body(new MessageResponseDTO("Usuario y perfil registrados con éxito"));
     }
