@@ -22,6 +22,7 @@ public class Notification {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    @Column(name = "message", columnDefinition = "TEXT")
     private String message;
     private Boolean isSeen=false;
 
