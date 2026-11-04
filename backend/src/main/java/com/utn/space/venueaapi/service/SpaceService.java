@@ -10,6 +10,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -72,6 +74,9 @@ public class SpaceService {
     @Transactional
     public void setActive(Integer id, Boolean active){
         Space space = findById(id);
+        if (Boolean.TRUE.equals(active) && isDeletedByOwner(space)) {
+            throw new InvalidDataException("No se puede activar un espacio que fue eliminado por su dueño.");
+        }
         space.setIsActive(active);
         spaceRepository.save(space);
     }
@@ -137,7 +142,7 @@ public class SpaceService {
         } catch (IllegalArgumentException | NullPointerException e) {
             throw new InvalidDataException("La política de cancelación no es válida.");
         }
-        Location location = locationService.findByLongitudeAndLatitude(dto.location().longitude(), dto.location().latitude());
+        Location location = resolveEditedLocation(space.getLocation(), dto.location().longitude(), dto.location().latitude());
         CancellationPolicies cancellation = cancellationPoliciesService.findByType(policy);
         space.setNameSpace(dto.nameSpace());
         space.setDescription(dto.description());
@@ -146,6 +151,36 @@ public class SpaceService {
         space.setLocation(location);
         space.setCancellationPolicies(cancellation);
         // Conservar propietario, actividad, publicación y catálogo. Los servicios tienen sus propias rutas.
+    }
+
+    //Se llama antes de agregar, modificar o borrar imágenes o servicios de un espacio.
+    //Igual que al editar los datos: si el cambio lo hace el dueño, el espacio vuelve a quedar pendiente de aprobación.
+    //Los cambios del admin no lo desactivan (como en modifySpace).
+    public void onContentChangedByOwner(Space space) {
+        if (!isLoggedUserOwner(space)) return;
+        if (isDeletedByOwner(space)) {
+            throw new InvalidDataException("No se puede modificar un espacio eliminado.");
+        }
+        space.setIsActive(false);
+        spaceRepository.save(space);
+    }
+
+    private boolean isLoggedUserOwner(Space space) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        var owner = space.getConsumerOwner();
+        return auth != null && owner != null && owner.getCredentials() != null
+                && Objects.equals(owner.getCredentials().getUsername(), auth.getName());
+    }
+
+    //Si las coordenadas no cambiaron se conserva la ubicación actual; si cambiaron se crea una nueva
+    //(no se modifica la existente porque podría estar compartida con otro espacio)
+    private Location resolveEditedLocation(Location current, BigDecimal longitude, BigDecimal latitude) {
+        if (current != null && current.getLongitude() != null && current.getLatitude() != null
+                && current.getLongitude().compareTo(longitude) == 0
+                && current.getLatitude().compareTo(latitude) == 0) {
+            return current;
+        }
+        return locationService.create(longitude, latitude);
     }
 
     //Este metodo maneja solo espacios activos
@@ -226,7 +261,7 @@ public class SpaceService {
                 null
         );
 
-        return findAllByFieldsWithInactives(auxDTO);
+        return withoutDeletedByOwner(findAllByFieldsWithInactives(auxDTO));
     }
 
     public List<Space> findAllByFieldsForOwner(SpaceFilterDTO spaceFilterDTO){
@@ -242,9 +277,19 @@ public class SpaceService {
                 spaceFilterDTO.radious()
         );
 
-        return findAllByFieldsWithInactives(auxDTO);
+        return withoutDeletedByOwner(findAllByFieldsWithInactives(auxDTO));
     }
 
+    //Los espacios eliminados por el dueño no se le muestran más en sus listados
+    private List<Space> withoutDeletedByOwner(List<Space> spaces) {
+        return spaces.stream().filter(space -> !isDeletedByOwner(space)).toList();
+    }
+
+    private boolean isDeletedByOwner(Space space) {
+        return Boolean.TRUE.equals(space.getDeletedByOwner());
+    }
+
+    //Soft delete hecho por el dueño: queda inactivo y marcado como eliminado para distinguirlo de un espacio pendiente de aprobación
     @Transactional
     public void deleteOwnedSpace(Integer id){
         Integer loggedOwnerId = consumerService.getLoggedConsumerId();
@@ -253,7 +298,12 @@ public class SpaceService {
         if(!Objects.equals(spaceToDelete.getConsumerOwner().getIdConsumer(), loggedOwnerId)){
             throw new InvalidDataException("Debe ser duenio de el espacio que desdea eliminar");
         }
-        deleteById(id);
+        if (isDeletedByOwner(spaceToDelete)) {
+            throw new InvalidDataException("El espacio ya fue eliminado.");
+        }
+        spaceToDelete.setIsActive(false);
+        spaceToDelete.setDeletedByOwner(true);
+        spaceRepository.save(spaceToDelete);
     }
 
     @Transactional
@@ -308,6 +358,9 @@ public class SpaceService {
         Space space = findByIdForUpdate(id);
         if (!Objects.equals(space.getConsumerOwner().getIdConsumer(), loggedOwnerId)) {
             throw new AccessDeniedException("Debe ser dueño del espacio que desea modificar.");
+        }
+        if (isDeletedByOwner(space)) {
+            throw new InvalidDataException("No se puede modificar un espacio eliminado.");
         }
         space.setIsActive(false);//Los espacios modificados pasan a inactivos hasta que el admin los apruebe nuevamente
         applyEditableDetails(space, spaceDTO);

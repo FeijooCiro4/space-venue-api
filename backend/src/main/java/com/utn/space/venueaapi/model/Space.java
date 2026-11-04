@@ -57,6 +57,10 @@ public class Space {
 
     private Boolean isActive;
 
+    //Marca los espacios que el dueño eliminó (soft delete). Distinto de isActive, que también se usa para "pendiente de aprobación"
+    @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
+    private Boolean deletedByOwner = false;
+
     @OneToMany(mappedBy = "space", cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
     @JsonManagedReference
     private List<SpaceServiceItem> services;

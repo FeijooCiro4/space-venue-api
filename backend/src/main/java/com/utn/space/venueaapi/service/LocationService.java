@@ -28,6 +28,14 @@ public class LocationService {
                 () -> new InvalidDataException("No se ha encontrado la ubicación en la base de datos bajo las coordenadas: lt=" + latitude + " lg=" + longitude));
     }
 
+    //Crea una ubicación nueva (se usa al editar un espacio y mover su ubicación en el mapa)
+    public Location create(BigDecimal longitude, BigDecimal latitude){
+        Location location = new Location();
+        location.setLongitude(longitude);
+        location.setLatitude(latitude);
+        return locationRepository.save(location);
+    }
+
     public boolean existsById(Integer id){
         return locationRepository.existsById(id);
     }

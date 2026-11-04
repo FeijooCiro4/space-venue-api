@@ -55,6 +55,7 @@ public class SpaceServiceItemService {
         if(serviceItemDTO.price().compareTo(BigDecimal.ZERO) <= 0) throw new InvalidDataException("No se permiten numeros negativos en el precio de un servicio");
 
         Space space = spaceService.findById(serviceItemDTO.idSpace());
+        spaceService.onContentChangedByOwner(space);
 
         SpaceServiceItem serviceItem = SpaceServiceItemMapper.toEntity(serviceItemDTO, space);
 
@@ -80,10 +81,13 @@ public class SpaceServiceItemService {
 
         if(serviceItemDTO.price().compareTo(BigDecimal.ZERO) <= 0) throw new InvalidDataException("No se permiten numeros negativos en modificacion del precio de un servicio");
 
+        Space space = spaceService.findById(serviceItemDTO.idSpace());
+        spaceService.onContentChangedByOwner(space);
+
         SpaceServiceItem serviceItem = SpaceServiceItemMapper.toEntity(
                 serviceItemDTO,
                 id,
-                spaceService.findById(serviceItemDTO.idSpace()));
+                space);
 
         spaceServiceItemRepository.save(serviceItem);
     }
@@ -130,6 +134,8 @@ public class SpaceServiceItemService {
             System.out.println("DEBUG SERVICE: ERROR - No se encontró la relación Servicio-Espacio. Abortando.");
             throw new IdNotFoundException("No se ha encontrado el servicio a eliminar: ", id);
         }
+
+        spaceService.onContentChangedByOwner(spaceService.findById(idSpace));
 
         System.out.println("DEBUG SERVICE: Ejecutando borrado real en base de datos...");
         System.out.println("DEBUG: El ID que voy a borrar es: " + id);
