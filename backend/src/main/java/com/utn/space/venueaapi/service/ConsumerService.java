@@ -1,9 +1,11 @@
 package com.utn.space.venueaapi.service;
 
 import com.utn.space.venueaapi.exceptions.IdNotFoundException;
+import com.utn.space.venueaapi.exceptions.InvalidDataException;
 import com.utn.space.venueaapi.exceptions.NameNotFoundException;
 import com.utn.space.venueaapi.model.Consumer;
 import com.utn.space.venueaapi.model.Credential;
+import com.utn.space.venueaapi.model.EDeactivationReason;
 import com.utn.space.venueaapi.model.records.ConsumerFilterDTO;
 import com.utn.space.venueaapi.repository.ConsumerRepository;
 import lombok.AllArgsConstructor;
@@ -12,6 +14,7 @@ import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -98,6 +101,25 @@ public class ConsumerService {
         }
 
         credential.setIsActive(false);
+        credential.setDeactivationReason(EDeactivationReason.USER_REQUEST);
+        consumerRepository.save(consumer);
+    }
+
+    //Permite al admin activar o desactivar cualquier cuenta. requesterUsername es el admin que hace el pedido
+    @Transactional
+    public void setActive(Integer id, Boolean active, String requesterUsername) {
+        Consumer consumer = findById(id);
+
+        Credential credential = consumer.getCredentials();
+        if (credential == null) {
+            throw new NameNotFoundException("No se encontraron credenciales para este usuario");
+        }
+        if (Boolean.FALSE.equals(active) && credential.getUsername().equals(requesterUsername)) {
+            throw new InvalidDataException("No podés desactivar tu propia cuenta.");
+        }
+
+        credential.setIsActive(active);
+        credential.setDeactivationReason(Boolean.TRUE.equals(active) ? null : EDeactivationReason.ADMIN);
         consumerRepository.save(consumer);
     }
 
@@ -111,6 +133,7 @@ public class ConsumerService {
 
         // Apagamos el flag de activo
         credential.setIsActive(false);
+        credential.setDeactivationReason(EDeactivationReason.ADMIN);
         consumerRepository.save(consumer);
     }
 }

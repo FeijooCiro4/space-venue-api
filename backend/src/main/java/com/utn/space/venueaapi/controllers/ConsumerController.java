@@ -96,12 +96,12 @@ public class ConsumerController {
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(
             summary = "Cambia el estado de un Usuario.",
-            description = "Cambia el estado Activo de un usuario por ID."
+            description = "Activa (active=true) o desactiva (active=false) la cuenta de un usuario por ID. Un admin no puede desactivar su propia cuenta."
     )
     public ResponseEntity<MessageResponseDTO> toggleUserStatus(
-            //(TO DO)Falta la logica para cambiar el estado de un usuario    
-            @PathVariable Integer id, @RequestParam Boolean active) {
-        return ResponseEntity.ok(new MessageResponseDTO("Estado del usuario actualizado"));
+            @PathVariable Integer id, @RequestParam Boolean active, Principal principal) {
+        consumerService.setActive(id, active, principal.getName());
+        return ResponseEntity.ok(new MessageResponseDTO(active ? "Usuario activado." : "Usuario desactivado."));
     }
 
     //Es para para que el admin filtre consumers
