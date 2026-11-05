@@ -113,18 +113,20 @@ public class ConsumerController {
     )
     public ResponseEntity<List<Consumer>> findAllByFields(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
-                    description = "Entra los datos obligatorios de la creacion de una nueva Reserva",
+                    description = "Filtros de búsqueda. Los campos en null se ignoran. Nombre, apellido, email y username buscan coincidencias parciales; el teléfono, exacta",
                     required = true,
                     content = @Content(
                             schema = @Schema(
-                                    implementation = Credential.class),
+                                    implementation = ConsumerFilterDTO.class),
                             examples = @ExampleObject(
                                     name = "Ejemplo",
                                     value = """
                                     {
-                                      "username":"Pepe",
-                                      "isActive": true,
-                                      "passwordHash":"fatiga"}
+                                      "firstname": null,
+                                      "lastname": null,
+                                      "email": null,
+                                      "phone": null,
+                                      "username": "pep"}
                                     """)
                     )
             )

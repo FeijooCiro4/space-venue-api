@@ -45,7 +45,8 @@ public class ConsumerService {
                 consumerFilterDTO.firstname(),
                 consumerFilterDTO.lastname(),
                 consumerFilterDTO.email(),
-                consumerFilterDTO.phone());
+                consumerFilterDTO.phone(),
+                consumerFilterDTO.username());
     }
 
     public Boolean existByEmail(String email){

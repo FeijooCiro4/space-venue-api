@@ -18,11 +18,13 @@ public interface ConsumerRepository extends JpaRepository<Consumer,Integer> {
        "(:firstname IS NULL OR LOWER(c.firstname) LIKE LOWER(CONCAT('%', :firstname, '%'))) AND " +
        "(:lastname IS NULL OR LOWER(c.lastname) LIKE LOWER(CONCAT('%', :lastname, '%'))) AND " +
        "(:email IS NULL OR LOWER(c.email) LIKE LOWER(CONCAT('%', :email, '%'))) AND " +
-       "(:phone IS NULL OR c.phone = :phone)")
+       "(:phone IS NULL OR c.phone = :phone) AND " +
+       "(:username IS NULL OR LOWER(c.credentials.username) LIKE LOWER(CONCAT('%', :username, '%')))")
    List<Consumer> findAllByFilters(@Param("firstname") String firstname,
                                    @Param("lastname") String lastname,
                                    @Param("email") String email,
-                                   @Param("phone") String phone);
+                                   @Param("phone") String phone,
+                                   @Param("username") String username);
 
     boolean existsByEmail(String email);
     boolean existsByPhone(String phone);
