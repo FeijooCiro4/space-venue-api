@@ -47,7 +47,7 @@ public class ServiceSelectedController {
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "IDs del catálogo. Precio y descripción se obtienen en el servidor.",
                     content = @Content(examples = @ExampleObject(value = "[{\"idService\":1},{\"idService\":2}]")))
-            @Valid @RequestBody List<@Valid SelectServiceDTO> servicesSelectedDTO){
+            @Valid @RequestBody List<@Valid Integer> servicesSelectedDTO){
         service.insertListOfServicesSelectedInAReservation(idReservation, servicesSelectedDTO);
     }
 

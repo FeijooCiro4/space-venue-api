@@ -117,6 +117,17 @@ public class ReservationController {
                 .body(reservationService.findById(id));
     }
 
+    @GetMapping("/space/{idSpace}")
+    @PreAuthorize("hasRole('ADMIN') or @securityUtils.isSpaceOwner(#idSpace, authentication.name)")
+    @Operation(
+            summary = "Busca reservas de un espacio.",
+            description = "En base al ID de un espacio, devuelve todas las reservas asociadas a ese espacio (siempre y cuando el usuario actual en sesión sea el dueño de ese espacio)."
+    )
+    public ResponseEntity<List<Reservation>> findAllBySpaceId(@Parameter(description = "ID del Espacio") @PathVariable Integer idSpace) {
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(reservationService.findAllBySpaceId(idSpace));
+    }
 
     @PostMapping
     @PreAuthorize("hasAnyRole('CLIENT', 'ADMIN')")

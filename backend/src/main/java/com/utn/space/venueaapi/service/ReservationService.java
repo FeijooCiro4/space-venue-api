@@ -71,6 +71,10 @@ public class ReservationService {
         return reservationRepository.findAllByConsumer_IdConsumer(loggedCustomerId);
     }
 
+    public List<Reservation> findAllBySpaceId(Integer idSpace) {
+        return reservationRepository.findAllBySpace_IdSpace(idSpace);
+    }
+
     private boolean isSpaceAvailableBetweenDates(LocalDateTime from, LocalDateTime until,
                                                   Space space, Integer excludedReservationId) {
         return reservationRepository.findAllBySpace_IdSpace(space.getIdSpace()).stream()

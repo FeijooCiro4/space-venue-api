@@ -29,7 +29,7 @@ public class ServiceSelectedService {
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)
-    public void insertListOfServicesSelectedInAReservation(Integer idReservation, List<SelectServiceDTO> selections) {
+    public void insertListOfServicesSelectedInAReservation(Integer idReservation, List<Integer> selections) {
         Reservation reservation = reservationService.findByIdForUpdate(idReservation);
         reservationService.requireEditable(reservation);
         if (selections == null || selections.isEmpty()) {
@@ -38,12 +38,11 @@ public class ServiceSelectedService {
         BigDecimal base = bookedBasePrice(reservation);
         List<ServiceSelected> additions = new ArrayList<>();
         var ids = new HashSet<Integer>();
-        for (SelectServiceDTO selection : selections) {
-            if (selection == null || selection.idService() == null || selection.idService() <= 0
-                    || !ids.add(selection.idService())) {
+        for (Integer idService : selections) {
+            if (idService == null || idService <= 0 || !ids.add(idService)) {
                 throw new InvalidReservationException("Los IDs de servicios deben ser positivos y no repetidos.");
             }
-            var item = spaceServiceItemService.findById(selection.idService());
+            var item = spaceServiceItemService.findById(idService);
             if (!item.getSpace().getIdSpace().equals(reservation.getSpace().getIdSpace())
                     || !Boolean.TRUE.equals(item.getIsActive())) {
                 throw new InvalidReservationException("El servicio debe estar activo y pertenecer al espacio reservado.");
