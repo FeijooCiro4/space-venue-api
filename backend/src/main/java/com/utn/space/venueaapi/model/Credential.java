@@ -37,6 +37,11 @@ public class Credential implements UserDetails {
     @Enumerated(EnumType.STRING)
     private ERoles rol = ERoles.ROLE_CLIENT;
 
+    // Por qué la cuenta está inactiva. null mientras isActive sea true.
+    // Las cuentas desactivadas antes de agregar este campo también quedan en null
+    @Enumerated(EnumType.STRING)
+    private EDeactivationReason deactivationReason;
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority(rol.name()));
