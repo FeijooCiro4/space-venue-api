@@ -67,6 +67,7 @@ public class SpaceService {
         //Este metodo efectua soft DELETE
         Space space = spaceRepository.findById(id).orElseThrow(() -> new IdNotFoundException("Space", id));
         space.setIsActive(false);
+        space.setDeactivationReason(ESpaceDeactivationReason.ADMIN);
         spaceRepository.save(space);
     }
 
@@ -78,6 +79,7 @@ public class SpaceService {
             throw new InvalidDataException("No se puede activar un espacio que fue eliminado por su dueño.");
         }
         space.setIsActive(active);
+        space.setDeactivationReason(Boolean.TRUE.equals(active) ? null : ESpaceDeactivationReason.ADMIN);
         spaceRepository.save(space);
     }
 
@@ -162,6 +164,7 @@ public class SpaceService {
             throw new InvalidDataException("No se puede modificar un espacio eliminado.");
         }
         space.setIsActive(false);
+        markPendingApproval(space);
         spaceRepository.save(space);
     }
 
@@ -285,6 +288,13 @@ public class SpaceService {
         return spaces.stream().filter(space -> !isDeletedByOwner(space)).toList();
     }
 
+    //Si un admin lo había desactivado se conserva ese motivo: editar no convierte la baja del admin en "pendiente de aprobación"
+    private void markPendingApproval(Space space) {
+        if (space.getDeactivationReason() != ESpaceDeactivationReason.ADMIN) {
+            space.setDeactivationReason(ESpaceDeactivationReason.PENDING_APPROVAL);
+        }
+    }
+
     private boolean isDeletedByOwner(Space space) {
         return Boolean.TRUE.equals(space.getDeletedByOwner());
     }
@@ -303,6 +313,7 @@ public class SpaceService {
         }
         spaceToDelete.setIsActive(false);
         spaceToDelete.setDeletedByOwner(true);
+        spaceToDelete.setDeactivationReason(ESpaceDeactivationReason.OWNER_DELETED);
         spaceRepository.save(spaceToDelete);
     }
 
@@ -315,6 +326,7 @@ public class SpaceService {
         space.setBasePrice(spaceDTO.basePrice());
         space.setBufferTime(spaceDTO.bufferTime());
         space.setIsActive(false); // Los espacios insertados por el dueño pasan a inactivos hasta que el admin los apruebe
+        space.setDeactivationReason(ESpaceDeactivationReason.PENDING_APPROVAL);
 
         space.setPublicationDate(java.time.LocalDate.now());
 
@@ -363,6 +375,7 @@ public class SpaceService {
             throw new InvalidDataException("No se puede modificar un espacio eliminado.");
         }
         space.setIsActive(false);//Los espacios modificados pasan a inactivos hasta que el admin los apruebe nuevamente
+        markPendingApproval(space);
         applyEditableDetails(space, spaceDTO);
     }
 

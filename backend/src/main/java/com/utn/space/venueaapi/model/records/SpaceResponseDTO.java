@@ -1,5 +1,7 @@
 package com.utn.space.venueaapi.model.records;
 
+import com.utn.space.venueaapi.model.ESpaceDeactivationReason;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -9,7 +11,8 @@ public record SpaceResponseDTO(
         Integer idSpace, PublicOwner consumerOwner, PublicLocation location,
         PublicCancellationPolicy cancellationPolicies, String nameSpace, String description,
         BigDecimal basePrice, LocalDate publicationDate, Integer bufferTime,
-        Boolean isActive, Boolean deletedByOwner, List<PublicService> services
+        Boolean isActive, Boolean deletedByOwner, ESpaceDeactivationReason deactivationReason,
+        List<PublicService> services
 ) {
     public record PublicOwner(Integer idConsumer, String firstname, String lastname) {}
     public record PublicLocation(Integer idLocation, BigDecimal longitude, BigDecimal latitude) {}

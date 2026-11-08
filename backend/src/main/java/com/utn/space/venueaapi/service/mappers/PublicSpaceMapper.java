@@ -1,5 +1,6 @@
 package com.utn.space.venueaapi.service.mappers;
 
+import com.utn.space.venueaapi.model.ESpaceDeactivationReason;
 import com.utn.space.venueaapi.model.Space;
 import com.utn.space.venueaapi.model.SpaceImage;
 import com.utn.space.venueaapi.model.records.SpaceResponseDTO;
@@ -21,9 +22,18 @@ public final class PublicSpaceMapper {
                         policy.getType() == null ? null : policy.getType().name(), policy.getDaysAnticipation(), policy.getRefundPercentage()),
                 space.getNameSpace(), space.getDescription(), space.getBasePrice(), space.getPublicationDate(),
                 space.getBufferTime(), space.getIsActive(), Boolean.TRUE.equals(space.getDeletedByOwner()),
+                deactivationReason(space),
                 space.getServices() == null ? List.of() : space.getServices().stream()
                         .map(item -> new SpaceResponseDTO.PublicService(item.getId(), item.getDescription(), item.getPrice(), item.getIsActive()))
                         .toList());
+    }
+
+    //Los espacios eliminados por el dueño antes de que existiera el motivo solo tienen deletedByOwner
+    //Este tipo de arreglo existe para que no se rompan los espacios ya creados cuando se purge la BDD se podrían ir sacando
+    private static ESpaceDeactivationReason deactivationReason(Space space) {
+        if (Boolean.TRUE.equals(space.getIsActive())) return null;
+        if (Boolean.TRUE.equals(space.getDeletedByOwner())) return ESpaceDeactivationReason.OWNER_DELETED;
+        return space.getDeactivationReason();
     }
 
     public static SpaceImageResponseDTO toDto(SpaceImage image) {

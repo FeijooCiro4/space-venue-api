@@ -61,6 +61,11 @@ public class Space {
     @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
     private Boolean deletedByOwner = false;
 
+    // Por qué el espacio está inactivo. null mientras isActive sea true.
+    // Los espacios desactivados antes de agregar este campo quedan en null (salvo los eliminados por el dueño, ver PublicSpaceMapper)
+    @Enumerated(EnumType.STRING)
+    private ESpaceDeactivationReason deactivationReason;
+
     @OneToMany(mappedBy = "space", cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
     @JsonManagedReference
     private List<SpaceServiceItem> services;
