@@ -20,7 +20,7 @@ public class LocationService {
     private static final BigDecimal EARTH_RADIOUS = new BigDecimal("6371.0");
 
     public Location findById(Integer id){
-        return locationRepository.findById(id).orElseThrow(()-> new IdNotFoundException("No se encontro la ubicacion: ", id));
+        return locationRepository.findById(id).orElseThrow(()-> new IdNotFoundException("la ubicación", id));
     }
 
     public Location findByLongitudeAndLatitude(BigDecimal longitude, BigDecimal latitude){

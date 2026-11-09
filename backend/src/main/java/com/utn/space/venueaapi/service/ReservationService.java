@@ -59,7 +59,7 @@ public class ReservationService {
     }
 
     public Reservation findById (Integer id){
-        return reservationRepository.findById(id).orElseThrow(()-> new IdNotFoundException("Reservacion",id));
+        return reservationRepository.findById(id).orElseThrow(()-> new IdNotFoundException("la reserva",id));
     }
 
     public List<Reservation> findByIdConsumer(Integer id){
@@ -90,7 +90,7 @@ public class ReservationService {
     // por @PreAuthorize antes de esperar el bloqueo de otra solicitud.
     public Reservation findByIdForUpdate(Integer id) {
         Reservation reservation = reservationRepository.findByIdForUpdate(id)
-                .orElseThrow(() -> new IdNotFoundException("Reservation", id));
+                .orElseThrow(() -> new IdNotFoundException("la reserva", id));
         entityManager.refresh(reservation, LockModeType.PESSIMISTIC_WRITE);
         return reservation;
     }
@@ -126,7 +126,7 @@ public class ReservationService {
                     throw new InvalidReservationException("Los servicios seleccionados deben tener IDs válidos y no repetidos.");
                 }
                 SpaceServiceItem item = spaceServiceItemRepository.findById(id)
-                        .orElseThrow(() -> new IdNotFoundException("Servicio Catálogo", id));
+                        .orElseThrow(() -> new IdNotFoundException("el servicio", id));
                 if (!item.getSpace().getIdSpace().equals(space.getIdSpace())) {
                     throw new ServiceOutOfPlaceException("El servicio no corresponde al espacio seleccionado.");
                 }

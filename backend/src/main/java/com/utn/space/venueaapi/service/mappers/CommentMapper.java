@@ -10,7 +10,7 @@ public class CommentMapper {
         if (comment.getConsumer() != null && comment.getConsumer().getCredentials() != null) {
             username = comment.getConsumer().getCredentials().getUsername();
         } else {
-            username = "Usuario no encontrado";
+            username = "No se encontró el usuario.";
         }
 
         CommentDTO dto = new CommentDTO(

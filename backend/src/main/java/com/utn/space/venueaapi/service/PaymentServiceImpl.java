@@ -115,7 +115,7 @@ public class PaymentServiceImpl implements IPaymentService {
 
             // Recuperamos la entidad real para mutar su estado
             Reservation actualReservation = reservationRepository.findById(reservationId)
-                    .orElseThrow(() -> new IdNotFoundException("Reservation", reservationId));
+                    .orElseThrow(() -> new IdNotFoundException("la reserva", reservationId));
 
             if ("approved".equals(mpPayment.getStatus())) {
                 // Si Mercado Pago aprueba el dinero, consolidamos la reserva
@@ -145,7 +145,7 @@ public class PaymentServiceImpl implements IPaymentService {
                     .orElse(new PaymentModel());
 
             Reservation actualReservation = reservationRepository.findById(reservationId)
-                    .orElseThrow(() -> new IdNotFoundException("Reservation", reservationId));
+                    .orElseThrow(() -> new IdNotFoundException("la reserva", reservationId));
 
             // Llenamos los datos simulando que Mercado Pago nos dio el OK
             paymentEntity.setIdPayment(paymentId);

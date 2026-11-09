@@ -26,7 +26,7 @@ public class SpaceServiceItemService {
     private final ConsumerService consumerService;
 
     public SpaceServiceItem findById(Integer id){
-        return spaceServiceItemRepository.findById(id).orElseThrow(() -> new IdNotFoundException("Servicio Catálogo", id));
+        return spaceServiceItemRepository.findById(id).orElseThrow(() -> new IdNotFoundException("el servicio", id));
     }
 
     public List<SpaceServiceItemDTO> listOfServicesFromSpace(Integer id){
@@ -52,7 +52,7 @@ public class SpaceServiceItemService {
 
     @Transactional
     public void insertServiceItem(SpaceServiceItemDTO serviceItemDTO){
-        if(serviceItemDTO.price().compareTo(BigDecimal.ZERO) <= 0) throw new InvalidDataException("No se permiten numeros negativos en el precio de un servicio");
+        if(serviceItemDTO.price().compareTo(BigDecimal.ZERO) <= 0) throw new InvalidDataException("El precio de un servicio no puede ser negativo.");
 
         Space space = spaceService.findById(serviceItemDTO.idSpace());
         spaceService.onContentChangedByOwner(space);
@@ -67,7 +67,7 @@ public class SpaceServiceItemService {
         Integer currentConsumerId = consumerService.getLoggedConsumerId();
 
         if(!spaceService.findById(serviceItemDTO.idSpace()).getConsumerOwner().getIdConsumer().equals(currentConsumerId)){
-            throw new InvalidDataException("No puede insertar servicios en un espacio del que no es duenio");
+            throw new InvalidDataException("No puede agregar servicios en un espacio del que no es dueño.");
         }
 
         insertServiceItem(serviceItemDTO);
@@ -76,10 +76,10 @@ public class SpaceServiceItemService {
     @Transactional
     public void updateServiceItem(Integer id, SpaceServiceItemDTO serviceItemDTO){
         if(!spaceServiceItemRepository.existsServiceItemInSpace(id, serviceItemDTO.idSpace())){
-            throw new IdNotFoundException("No se ha encontrado el servicio a modificar en el espacio: ", id);
+            throw new IdNotFoundException("el servicio", id);
         }
 
-        if(serviceItemDTO.price().compareTo(BigDecimal.ZERO) <= 0) throw new InvalidDataException("No se permiten numeros negativos en modificacion del precio de un servicio");
+        if(serviceItemDTO.price().compareTo(BigDecimal.ZERO) <= 0) throw new InvalidDataException("El precio de un servicio no puede ser negativo.");
 
         Space space = spaceService.findById(serviceItemDTO.idSpace());
         spaceService.onContentChangedByOwner(space);
@@ -97,7 +97,7 @@ public class SpaceServiceItemService {
         Integer currentConsumerId = consumerService.getLoggedConsumerId();
 
         if(!spaceService.findById(serviceItemDTO.idSpace()).getConsumerOwner().getIdConsumer().equals(currentConsumerId)){
-            throw new InvalidDataException("No puede modificar servicios en un espacio del que no es duenio");
+            throw new InvalidDataException("No puede modificar servicios en un espacio del que no es dueño.");
         }
 
         updateServiceItem(id,serviceItemDTO);
@@ -118,7 +118,7 @@ public class SpaceServiceItemService {
 
         if (!ownerId.equals(currentConsumerId)) {
             System.out.println("DEBUG SERVICE: ERROR - El usuario no es dueño. Abortando.");
-            throw new InvalidDataException("No puede eliminar servicios en un espacio del que no es dueño");
+            throw new InvalidDataException("No puede eliminar servicios en un espacio del que no es dueño.");
         }
 
         deleteServiceItem(id, idSpace);
@@ -132,7 +132,7 @@ public class SpaceServiceItemService {
 
         if (!exists) {
             System.out.println("DEBUG SERVICE: ERROR - No se encontró la relación Servicio-Espacio. Abortando.");
-            throw new IdNotFoundException("No se ha encontrado el servicio a eliminar: ", id);
+            throw new IdNotFoundException("el servicio", id);
         }
 
         spaceService.onContentChangedByOwner(spaceService.findById(idSpace));
