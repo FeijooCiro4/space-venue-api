@@ -1,6 +1,7 @@
 package com.utn.space.venueaapi.repository;
 
 import com.utn.space.venueaapi.model.Reservation;
+import com.utn.space.venueaapi.model.ReservationStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import jakarta.persistence.LockModeType;
@@ -36,4 +37,19 @@ public interface ReservationRepository extends JpaRepository<Reservation,Integer
             "AND (r.status = 'CONFIRMED' OR r.status = 'COMPLETED')")
     long countCompletedReservationsByConsumerAndSpace(@Param("idConsumer") Integer idConsumer,
                                                       @Param("idSpace") Integer idSpace);
+
+    // Verifica si un usuario tiene reservas activas en un espacio específico con ciertos estados
+    @Query("""
+    SELECT CASE WHEN COUNT(r) > 0 THEN true ELSE false END
+    FROM Reservation r
+    WHERE r.consumer.idConsumer = :consumerId
+      AND r.space.idSpace = :spaceId
+      AND r.isActive = true
+      AND r.status IN :statuses
+    """)
+    boolean existsActiveReservationByConsumerAndSpaceAndStatusIn(
+            @Param("consumerId") Integer consumerId,
+            @Param("spaceId") Integer spaceId,
+            @Param("statuses") List<ReservationStatus> statuses
+    );
 }

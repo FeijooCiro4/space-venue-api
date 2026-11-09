@@ -22,5 +22,8 @@ public interface CommentRepository extends JpaRepository<Comment,Integer> {
 
     List<Comment> findAllByOrderByScoreAsc();
     List<Comment> findAllByOrderByScoreDesc();
-
+    boolean existsByConsumer_IdConsumerAndSpace_IdSpace(
+            Integer consumerId,
+            Integer spaceId
+    );
 }

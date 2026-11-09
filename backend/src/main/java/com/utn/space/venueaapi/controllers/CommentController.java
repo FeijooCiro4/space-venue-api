@@ -164,4 +164,18 @@ public class CommentController {
     public ResponseEntity<List<CommentDTO>> findAllByScoreDesc(){
         return ResponseEntity.ok(commentService.filterByScoreDESC());
     }
+
+    @GetMapping("/spaces/{spaceId}/has-comment")
+    public ResponseEntity<Boolean> hasCommentOnSpace(
+            @PathVariable Integer spaceId
+    ) {
+        return ResponseEntity.ok(commentService.hasCommentOnSpace(spaceId));
+    }
+
+    @GetMapping("/spaces/{spaceId}/can-comment")
+    public ResponseEntity<Boolean> canCommentOnSpace(
+            @PathVariable Integer spaceId
+    ) {
+        return ResponseEntity.ok(commentService.canCommentOnSpace(spaceId));
+    }
 }
