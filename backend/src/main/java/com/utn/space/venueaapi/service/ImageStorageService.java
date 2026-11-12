@@ -45,11 +45,11 @@ public class ImageStorageService {
     public ImageUploadUrlResponseDTO createUploadUrl(ImageUploadUrlRequestDTO request) {
         String extension = ALLOWED_TYPES.get(request.contentType());
         if (extension == null) {
-            throw new InvalidDataException("Tipo de imagen no permitido. Use JPG, PNG o WEBP");
+            throw new InvalidDataException("Tipo de imagen no permitido. Use JPG, PNG o WEBP.");
         }
 
         if (request.size() > MAX_SIZE) {
-            throw new InvalidDataException("La imagen debe pesar como máximo 5 MB");
+            throw new InvalidDataException("La imagen debe pesar como máximo 5 MB.");
         }
 
         String key = keyPrefixForSpace(request.idSpace()) + UUID.randomUUID() + "." + extension;

@@ -50,22 +50,22 @@ public class SpaceService {
     }
 
     public Space findById(Integer id){
-        return spaceRepository.findById(id).orElseThrow(()-> new IdNotFoundException("Space", id));
+        return spaceRepository.findById(id).orElseThrow(()-> new IdNotFoundException("el espacio", id));
     }
 
     public Space findByIdForUpdate(Integer id) {
         Space space = spaceRepository.findByIdForUpdate(id)
-                .orElseThrow(() -> new IdNotFoundException("Space", id));
+                .orElseThrow(() -> new IdNotFoundException("el espacio", id));
         entityManager.refresh(space, LockModeType.PESSIMISTIC_WRITE);
         return space;
     }
 
     public void deleteById(Integer id){
         if(!spaceRepository.existsById(id)){
-            throw new IdNotFoundException("Space", id);
+            throw new IdNotFoundException("el espacio", id);
         }
         //Este metodo efectua soft DELETE
-        Space space = spaceRepository.findById(id).orElseThrow(() -> new IdNotFoundException("Space", id));
+        Space space = spaceRepository.findById(id).orElseThrow(() -> new IdNotFoundException("el espacio", id));
         space.setIsActive(false);
         space.setDeactivationReason(ESpaceDeactivationReason.ADMIN);
         spaceRepository.save(space);
@@ -86,22 +86,22 @@ public class SpaceService {
     @Transactional(rollbackFor = Exception.class)
     public void insertSpace(SpaceDTO spaceDTO){
         if(spaceDTO.nameSpace().isBlank()){
-            throw new InvalidDataException("Por favor ingrese un nombre para su espacio");
+            throw new InvalidDataException("Por favor ingrese un nombre para su espacio.");
         }
 
         if(spaceDTO.description().isBlank()){
-            throw new InvalidDataException("Por favor ingrese una descripcion para su espacio");
+            throw new InvalidDataException("Por favor ingrese una descripción para su espacio.");
         }
 
         if(spaceDTO.basePrice().compareTo(BigDecimal.ZERO) <= 0){
-            throw new InvalidDataException("Por favor ingrese un precio valido");
+            throw new InvalidDataException("Por favor ingrese un precio válido.");
         }
 
         Space spaceToInsert = new Space();
         spaceToInsert.setIdSpace(null);
         spaceToInsert.setConsumerOwner(consumerService.findById(spaceDTO.idConsumerOwner()));
         spaceToInsert.setLocation(locationService.findByLongitudeAndLatitude(spaceDTO.location().longitude(), spaceDTO.location().latitude()));
-        spaceToInsert.setCancellationPolicies(cancellationPoliciesService.findByType(EPolicyType.valueOf(spaceDTO.cancellationPolicies())));
+        spaceToInsert.setCancellationPolicies(cancellationPoliciesService.findByType(parsearPolitica(spaceDTO.cancellationPolicies())));
         spaceToInsert.setNameSpace(spaceDTO.nameSpace());
         spaceToInsert.setDescription(spaceDTO.description());
         spaceToInsert.setBasePrice(spaceDTO.basePrice());
@@ -138,12 +138,7 @@ public class SpaceService {
         if (dto.location() == null || dto.location().longitude() == null || dto.location().latitude() == null) {
             throw new InvalidDataException("La ubicación del espacio es obligatoria.");
         }
-        final EPolicyType policy;
-        try {
-            policy = EPolicyType.valueOf(dto.cancellationPolicies());
-        } catch (IllegalArgumentException | NullPointerException e) {
-            throw new InvalidDataException("La política de cancelación no es válida.");
-        }
+        final EPolicyType policy = parsearPolitica(dto.cancellationPolicies());
         Location location = resolveEditedLocation(space.getLocation(), dto.location().longitude(), dto.location().latitude());
         CancellationPolicies cancellation = cancellationPoliciesService.findByType(policy);
         space.setNameSpace(dto.nameSpace());
@@ -189,11 +184,11 @@ public class SpaceService {
     //Este metodo maneja solo espacios activos
     public List<Space> findAllByFields(SpaceFilterDTO spaceFilterDTO){
         if((spaceFilterDTO.idConsumerOwner() != null) && !consumerService.existsById(spaceFilterDTO.idConsumerOwner())){
-            throw new IdNotFoundException("Consumer",spaceFilterDTO.idConsumerOwner());
+            throw new IdNotFoundException("el usuario",spaceFilterDTO.idConsumerOwner());
         }
 
         if((spaceFilterDTO.idLocation() != null) && !locationService.existsById(spaceFilterDTO.idLocation())){
-            throw new IdNotFoundException("Location",spaceFilterDTO.idLocation());
+            throw new IdNotFoundException("la ubicación",spaceFilterDTO.idLocation());
         }
 
         //Filtro inicial de la base de datos
@@ -222,11 +217,11 @@ public class SpaceService {
     //Este metodo considera espacios inactivos
     public List<Space> findAllByFieldsWithInactives(SpaceFilterDTO spaceFilterDTO){
         if((spaceFilterDTO.idConsumerOwner() != null) && !consumerService.existsById(spaceFilterDTO.idConsumerOwner())){
-            throw new IdNotFoundException("Consumer",spaceFilterDTO.idConsumerOwner());
+            throw new IdNotFoundException("el usuario",spaceFilterDTO.idConsumerOwner());
         }
 
         if((spaceFilterDTO.idLocation() != null) && !locationService.existsById(spaceFilterDTO.idLocation())){
-            throw new IdNotFoundException("Location",spaceFilterDTO.idLocation());
+            throw new IdNotFoundException("la ubicación",spaceFilterDTO.idLocation());
         }
 
         //Filtro inicial de la base de datos
@@ -306,7 +301,7 @@ public class SpaceService {
         Space spaceToDelete = findById(id);
 
         if(!Objects.equals(spaceToDelete.getConsumerOwner().getIdConsumer(), loggedOwnerId)){
-            throw new InvalidDataException("Debe ser duenio de el espacio que desdea eliminar");
+            throw new InvalidDataException("Debe ser dueño del espacio que desea eliminar.");
         }
         if (isDeletedByOwner(spaceToDelete)) {
             throw new InvalidDataException("El espacio ya fue eliminado.");
@@ -338,11 +333,11 @@ public class SpaceService {
 
             space.setLocation(nuevaLocacion);
         } else {
-            throw new IllegalArgumentException("La ubicación geográfica es obligatoria.");
+            throw new InvalidDataException("La ubicación geográfica es obligatoria.");
         }
 
         if (spaceDTO.cancellationPolicies() != null) {
-            EPolicyType tipoEnum = EPolicyType.valueOf(spaceDTO.cancellationPolicies().toUpperCase());
+            EPolicyType tipoEnum = parsearPolitica(spaceDTO.cancellationPolicies());
             CancellationPolicies politicaBD = cancellationPoliciesService.findByType(tipoEnum);
             space.setCancellationPolicies(politicaBD);
         }
@@ -379,4 +374,13 @@ public class SpaceService {
         applyEditableDetails(space, spaceDTO);
     }
 
+
+    //Convierte el texto recibido a la política; si no existe es un error del usuario, no del servidor
+    private EPolicyType parsearPolitica(String valor) {
+        try {
+            return EPolicyType.valueOf(valor.trim().toUpperCase());
+        } catch (IllegalArgumentException | NullPointerException e) {
+            throw new InvalidDataException("La política de cancelación no es válida.");
+        }
+    }
 }
