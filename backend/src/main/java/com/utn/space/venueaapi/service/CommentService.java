@@ -7,6 +7,7 @@ import com.utn.space.venueaapi.model.Reservation;
 import com.utn.space.venueaapi.model.ReservationStatus;
 import com.utn.space.venueaapi.model.records.CommentDTO;
 import com.utn.space.venueaapi.repository.CommentRepository;
+import com.utn.space.venueaapi.repository.ReservationRepository;
 import com.utn.space.venueaapi.service.mappers.CommentMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
@@ -24,6 +25,8 @@ public class CommentService {
     SpaceService spaceService;
     @Autowired
     ReservationService reservationService;
+    @Autowired
+    ReservationRepository reservationRepository;
 
     public List<CommentDTO> findAll(){
         List<Comment> commentList = commentRepository.findAll();
@@ -149,5 +152,33 @@ public class CommentService {
         }
 
         modifyComment(id,commentDTO);
+    }
+
+    public boolean hasCommentOnSpace(Integer spaceId) {
+        validateSpaceExists(spaceId);
+        Integer consumerId = consumerService.getLoggedConsumerId();
+
+        return commentRepository.existsByConsumer_IdConsumerAndSpace_IdSpace(
+                consumerId, spaceId
+        );
+    }
+
+    public boolean canCommentOnSpace(Integer spaceId) {
+        validateSpaceExists(spaceId);
+        Integer consumerId = consumerService.getLoggedConsumerId();
+
+        return reservationRepository.existsActiveReservationByConsumerAndSpaceAndStatusIn(
+                consumerId,
+                spaceId,
+                List.of(ReservationStatus.COMPLETED, ReservationStatus.CONFIRMED)
+        );
+    }
+
+    private void validateSpaceExists(Integer spaceId) {
+        if (!spaceService.existsById(spaceId)) {
+            throw new IdNotFoundException(
+                    "No se encontró el espacio: ", spaceId
+            );
+        }
     }
 }

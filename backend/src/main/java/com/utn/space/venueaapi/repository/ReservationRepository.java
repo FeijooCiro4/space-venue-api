@@ -1,9 +1,11 @@
 package com.utn.space.venueaapi.repository;
 
 import com.utn.space.venueaapi.model.Reservation;
+import com.utn.space.venueaapi.model.ReservationStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -36,4 +38,48 @@ public interface ReservationRepository extends JpaRepository<Reservation,Integer
             "AND (r.status = 'CONFIRMED' OR r.status = 'COMPLETED')")
     long countCompletedReservationsByConsumerAndSpace(@Param("idConsumer") Integer idConsumer,
                                                       @Param("idSpace") Integer idSpace);
+
+    // Verifica si un usuario tiene reservas activas en un espacio específico con ciertos estados
+    @Query("""
+    SELECT CASE WHEN COUNT(r) > 0 THEN true ELSE false END
+    FROM Reservation r
+    WHERE r.consumer.idConsumer = :consumerId
+      AND r.space.idSpace = :spaceId
+      AND r.isActive = true
+      AND r.status IN :statuses
+    """)
+    boolean existsActiveReservationByConsumerAndSpaceAndStatusIn(
+            @Param("consumerId") Integer consumerId,
+            @Param("spaceId") Integer spaceId,
+            @Param("statuses") List<ReservationStatus> statuses
+    );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+    UPDATE Reservation r
+    SET r.status = :newStatus
+    WHERE r.status = :currentStatus
+      AND r.isActive = true
+      AND r.fromDate <= :now
+      AND r.untilDate > :now
+    """)
+    int updateStartedReservations(
+            @Param("currentStatus") ReservationStatus currentStatus,
+            @Param("newStatus") ReservationStatus newStatus,
+            @Param("now") LocalDateTime now
+    );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+    UPDATE Reservation r
+    SET r.status = :newStatus
+    WHERE r.status IN :eligibleStatuses
+      AND r.isActive = true
+      AND r.untilDate <= :now
+    """)
+    int updateFinishedReservations(
+            @Param("eligibleStatuses") List<ReservationStatus> eligibleStatuses,
+            @Param("newStatus") ReservationStatus newStatus,
+            @Param("now") LocalDateTime now
+    );
 }
