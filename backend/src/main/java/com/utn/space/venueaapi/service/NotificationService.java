@@ -26,11 +26,11 @@ public class NotificationService {
     }
 
     public Notification findById(Integer id){
-        return notificationRepository.findById(id).orElseThrow(()->new IdNotFoundException("Notificacion",id));
+        return notificationRepository.findById(id).orElseThrow(()->new IdNotFoundException("la notificación",id));
     }
 
     public Notification markAsSeen (Integer id){
-        Notification aux= notificationRepository.findById(id).orElseThrow(()->new IdNotFoundException("Notificacion",id));
+        Notification aux= notificationRepository.findById(id).orElseThrow(()->new IdNotFoundException("la notificación",id));
         aux.setIsSeen(true);
         return notificationRepository.save(aux);
     }

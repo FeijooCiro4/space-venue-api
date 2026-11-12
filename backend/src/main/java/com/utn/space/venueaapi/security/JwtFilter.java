@@ -68,11 +68,11 @@ public class JwtFilter extends OncePerRequestFilter {
                 // Consultar el estado actual: un JWT anterior no debe eludir la baja de la cuenta.
                 try {
                     if (!userDetailsService.loadUserByUsername(username).isEnabled()) {
-                        errorResponder.escribir(response, HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
+                        errorResponder.escribir(response, HttpStatus.UNAUTHORIZED, "Su cuenta ya no está activa. Inicie sesión nuevamente.");
                         return;
                     }
                 } catch (UsernameNotFoundException e) {
-                    errorResponder.escribir(response, HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
+                    errorResponder.escribir(response, HttpStatus.UNAUTHORIZED, "Su cuenta ya no está activa. Inicie sesión nuevamente.");
                     return;
                 }
 
