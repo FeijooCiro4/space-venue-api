@@ -83,7 +83,6 @@ public interface ReservationRepository extends JpaRepository<Reservation,Integer
             @Param("now") LocalDateTime now
     );
 
-    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
     SELECT r.id FROM Reservation r
     WHERE r.status = :status
