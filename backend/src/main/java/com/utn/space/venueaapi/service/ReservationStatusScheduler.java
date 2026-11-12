@@ -17,7 +17,7 @@ import java.util.List;
 public class ReservationStatusScheduler {
     private final ReservationRepository reservationRepository;
 
-    @Scheduled(fixedRate = 60_000)
+    @Scheduled(fixedRate = 10_000)
     @Transactional
     public void updateReservationStatuses() {
         LocalDateTime now = LocalDateTime.now();
