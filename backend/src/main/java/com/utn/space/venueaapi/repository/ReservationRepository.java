@@ -82,4 +82,18 @@ public interface ReservationRepository extends JpaRepository<Reservation,Integer
             @Param("newStatus") ReservationStatus newStatus,
             @Param("now") LocalDateTime now
     );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+    UPDATE Reservation r
+    SET r.status = :newStatus
+    WHERE r.status = :currentStatus
+      AND r.isActive = true
+      AND r.fromDate < :now
+    """)
+    int cancelExpiredTentativeReservations(
+            @Param("currentStatus") ReservationStatus currentStatus,
+            @Param("newStatus") ReservationStatus newStatus,
+            @Param("now") LocalDateTime now
+    );
 }
