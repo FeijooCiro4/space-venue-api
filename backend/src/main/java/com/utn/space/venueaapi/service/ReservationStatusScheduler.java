@@ -34,9 +34,15 @@ public class ReservationStatusScheduler {
                 now
         );
 
-        if (started > 0 || completed > 0) {
-            log.info("Estados de reservas actualizados: {} iniciadas, {} completadas",
-                    started, completed);
+        int expired = reservationRepository.cancelExpiredTentativeReservations(
+                ReservationStatus.TENTATIVE,
+                ReservationStatus.CANCELLED,
+                now
+        );
+
+        if (started > 0 || completed > 0 || expired > 0) {
+            log.info("Estados de reservas actualizados: {} iniciadas, {} completadas, {} expiradas",
+                    started, completed, expired);
         }
     }
 }
