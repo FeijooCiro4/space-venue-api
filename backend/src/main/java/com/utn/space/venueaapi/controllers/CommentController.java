@@ -44,7 +44,7 @@ public class CommentController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('CLIENT', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CLIENT', 'OFFERER', 'ADMIN')")
     @Operation(
             summary = "Elimina un Comentario.",
             description = "Elimina un Comentario por ID."
@@ -61,10 +61,10 @@ public class CommentController {
     }
 
     @PostMapping()
-    @PreAuthorize("hasAnyRole('CLIENT', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CLIENT', 'OFFERER', 'ADMIN')")
     @Operation(
             summary = "Permite comentar sobre un espacio",
-            description = "Permite a un usuario con permisos de CLIENT o ADMIN comentar sobre un espacio sobre el que tengan registrada al menos una reserva."
+            description = "Permite a un usuario con permisos de CLIENT, OFFERER o ADMIN comentar sobre un espacio sobre el que tengan registrada al menos una reserva."
     )
     public void insertComment(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(

@@ -53,7 +53,7 @@ public class ReservationController {
 
 ///---------------------------Metodos------------------------------------------------------------------------------------
     @PostMapping("/{id}/checkout")
-    @PreAuthorize("hasRole('CLIENT') and @securityUtils.isReservationOwner(#id, authentication.name)")
+    @PreAuthorize("hasAnyRole('CLIENT', 'OFFERER') and @securityUtils.isReservationOwner(#id, authentication.name)")
     public ResponseEntity<?> createPaymentPreference(@Parameter(description = "ID de la Reservación") @PathVariable Integer id) {
         try {
             Reservation reservation = reservationService.findById(id);
@@ -98,7 +98,7 @@ public class ReservationController {
             summary = "Busca las reservas del usuario actual en sesión.",
             description = "Devuelve la lista completa de alquileres que le pertenecen al cliente autenticado."
     )
-    @PreAuthorize("hasAnyRole('CLIENT', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CLIENT', 'OFFERER', 'ADMIN')")
     public ResponseEntity<List<Reservation>> findAllForCurrentConsumer() {
         return ResponseEntity
                 .status(HttpStatus.OK)
@@ -130,7 +130,7 @@ public class ReservationController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('CLIENT', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CLIENT', 'OFFERER', 'ADMIN')")
     @Operation(
             summary = "Crea una Reserva.",
             description = "El cliente entra un ReservaDTO por el body."

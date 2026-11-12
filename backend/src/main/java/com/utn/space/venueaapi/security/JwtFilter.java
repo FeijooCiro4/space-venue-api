@@ -66,8 +66,13 @@ public class JwtFilter extends OncePerRequestFilter {
 
             if (esValido && !estaEnBlacklist) {
                 // Consultar el estado actual: un JWT anterior no debe eludir la baja de la cuenta.
+                // Los permisos tambien se toman de la base y no del claim "rol" del token: si un admin
+                // cambia el rol de un usuario (por ej. de OFFERER a CLIENT) el cambio aplica en el
+                // siguiente request, sin esperar a que el token expire.
+                org.springframework.security.core.userdetails.UserDetails userDetails;
                 try {
-                    if (!userDetailsService.loadUserByUsername(username).isEnabled()) {
+                    userDetails = userDetailsService.loadUserByUsername(username);
+                    if (!userDetails.isEnabled()) {
                         errorResponder.escribir(response, HttpStatus.UNAUTHORIZED, "Su cuenta ya no está activa. Inicie sesión nuevamente.");
                         return;
                     }
@@ -76,10 +81,8 @@ public class JwtFilter extends OncePerRequestFilter {
                     return;
                 }
 
-                String rol = jwtUtil.extraerRol(jwt);
-
-                var authority = new org.springframework.security.core.authority.SimpleGrantedAuthority(rol);
-                java.util.List<org.springframework.security.core.authority.SimpleGrantedAuthority> authorities = java.util.List.of(authority);
+                var authorities = userDetails.getAuthorities();
+                String rol = authorities.toString();
 
                 UsernamePasswordAuthenticationToken authToken =
                         new UsernamePasswordAuthenticationToken(username, null, authorities);

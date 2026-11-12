@@ -3,6 +3,7 @@ package com.utn.space.venueaapi.controllers;
 import com.utn.space.venueaapi.exceptions.InvalidDataException;
 import com.utn.space.venueaapi.model.Consumer;
 import com.utn.space.venueaapi.model.Credential;
+import com.utn.space.venueaapi.model.ERoles;
 import com.utn.space.venueaapi.model.records.ConsumerFilterDTO;
 
 import com.utn.space.venueaapi.service.ConsumerService;
@@ -102,6 +103,19 @@ public class ConsumerController {
             @PathVariable Integer id, @RequestParam Boolean active, Principal principal) {
         consumerService.setActive(id, active, principal.getName());
         return ResponseEntity.ok(new MessageResponseDTO(active ? "Usuario activado." : "Usuario desactivado."));
+    }
+
+    @PutMapping("/usuarios/{id}/rol")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Cambia el rol de un Usuario.",
+            description = "Asigna ROLE_CLIENT o ROLE_OFFERER a un usuario por ID. Solo los OFFERER (y los ADMIN) pueden publicar espacios. No permite modificar administradores ni quitarle el rol OFFERER a quien todavía tiene espacios."
+    )
+    public ResponseEntity<MessageResponseDTO> changeUserRol(@PathVariable Integer id, @RequestParam ERoles rol) {
+        consumerService.setRol(id, rol);
+        return ResponseEntity.ok(new MessageResponseDTO(rol == ERoles.ROLE_OFFERER
+                ? "El usuario ahora puede publicar espacios."
+                : "El usuario ya no puede publicar espacios."));
     }
 
     //Es para para que el admin filtre consumers
