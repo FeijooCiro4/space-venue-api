@@ -73,11 +73,11 @@ public class JwtFilter extends OncePerRequestFilter {
                 try {
                     userDetails = userDetailsService.loadUserByUsername(username);
                     if (!userDetails.isEnabled()) {
-                        errorResponder.escribir(response, HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
+                        errorResponder.escribir(response, HttpStatus.UNAUTHORIZED, "Su cuenta ya no está activa. Inicie sesión nuevamente.");
                         return;
                     }
                 } catch (UsernameNotFoundException e) {
-                    errorResponder.escribir(response, HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
+                    errorResponder.escribir(response, HttpStatus.UNAUTHORIZED, "Su cuenta ya no está activa. Inicie sesión nuevamente.");
                     return;
                 }
 

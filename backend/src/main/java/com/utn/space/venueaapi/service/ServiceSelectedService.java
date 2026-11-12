@@ -61,12 +61,12 @@ public class ServiceSelectedService {
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public void deleteServiceSelectedForAReservation(Integer id) {
         var selected = serviceSelectedRepository.findById(id)
-                .orElseThrow(() -> new IdNotFoundException("Servicio seleccionado", id));
+                .orElseThrow(() -> new IdNotFoundException("el servicio seleccionado", id));
         Reservation reservation = reservationService.findByIdForUpdate(selected.getReservation().getId());
         reservationService.requireEditable(reservation);
         BigDecimal base = bookedBasePrice(reservation);
         if (!reservation.getServices().removeIf(service -> service.getId().equals(id))) {
-            throw new IdNotFoundException("Servicio seleccionado", id);
+            throw new IdNotFoundException("el servicio seleccionado", id);
         }
         recalculateTotal(reservation, base);
         // orphanRemoval borra el registro sin dejarlo en la colección del padre.

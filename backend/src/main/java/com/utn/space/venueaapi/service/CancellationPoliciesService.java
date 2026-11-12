@@ -16,7 +16,7 @@ public class CancellationPoliciesService {
     CancellationPoliciesRepository cancellationPoliciesRepository;
 
     public CancellationPolicies findById(Integer id){
-        return cancellationPoliciesRepository.findById(id).orElseThrow(()->new IdNotFoundException("Politicas de Cancelacion ", id));
+        return cancellationPoliciesRepository.findById(id).orElseThrow(()->new IdNotFoundException("la política de cancelación", id));
     }
 
     public CancellationPolicies findByType(EPolicyType tipoEnum){

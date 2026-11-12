@@ -38,14 +38,14 @@ public class ConsumerService {
     }
 
     public Consumer findById(Integer id){
-        return consumerRepository.findById(id).orElseThrow(()-> new IdNotFoundException("Consumer",id));
+        return consumerRepository.findById(id).orElseThrow(()-> new IdNotFoundException("el usuario",id));
     }
     public Consumer findByUsername(String username){
-        return consumerRepository.findByUsername(username).orElseThrow(() -> new NameNotFoundException("No hay usuarios con ese username"));
+        return consumerRepository.findByUsername(username).orElseThrow(() -> new NameNotFoundException("No hay usuarios con ese nombre de usuario."));
     }
 
     public Consumer findByCredentialsUsername(String username){
-        return consumerRepository.findByUsername(username).orElseThrow(() -> new NameNotFoundException("No se ha encontrado al usuario buscado por username"));
+        return consumerRepository.findByUsername(username).orElseThrow(() -> new NameNotFoundException("No se encontró el usuario buscado."));
     }
 
     public List<Consumer> findAllByfields(ConsumerFilterDTO consumerFilterDTO){
@@ -71,7 +71,7 @@ public class ConsumerService {
 
     public void deleteById(Integer id){
         if(!existsById(id)){
-            throw new IdNotFoundException("Consumer",id);
+            throw new IdNotFoundException("el usuario",id);
         }
         consumerRepository.deleteById(id);
     }
@@ -81,7 +81,7 @@ public class ConsumerService {
             consumerRepository.save(consumer);
         }
         else {
-            throw new IdNotFoundException("Consumer", consumer.getIdConsumer());
+            throw new IdNotFoundException("el usuario", consumer.getIdConsumer());
         }
     }
 
@@ -98,11 +98,11 @@ public class ConsumerService {
     }
     public void deleteUserLogically(String username) {
         Consumer consumer = consumerRepository.findByUsername(username)
-                .orElseThrow(() -> new NameNotFoundException("Usuario no encontrado"));
+                .orElseThrow(() -> new NameNotFoundException("No se encontró el usuario."));
 
         Credential credential = consumer.getCredentials();
         if (credential == null) {
-            throw new NameNotFoundException("No se encontraron credenciales para este usuario");
+            throw new NameNotFoundException("No se encontraron credenciales para este usuario.");
         }
 
         credential.setIsActive(false);
@@ -117,7 +117,7 @@ public class ConsumerService {
 
         Credential credential = consumer.getCredentials();
         if (credential == null) {
-            throw new NameNotFoundException("No se encontraron credenciales para este usuario");
+            throw new NameNotFoundException("No se encontraron credenciales para este usuario.");
         }
         if (Boolean.FALSE.equals(active) && credential.getUsername().equals(requesterUsername)) {
             throw new InvalidDataException("No podés desactivar tu propia cuenta.");
@@ -133,7 +133,7 @@ public class ConsumerService {
 
         Credential credential = consumer.getCredentials();
         if (credential == null) {
-            throw new NameNotFoundException("No se encontraron credenciales para este usuario");
+            throw new NameNotFoundException("No se encontraron credenciales para este usuario.");
         }
 
         // Apagamos el flag de activo

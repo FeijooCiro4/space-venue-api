@@ -11,6 +11,7 @@ import com.utn.space.venueaapi.service.NotificationService;
 import com.utn.space.venueaapi.service.RegistrationService;
 import com.utn.space.venueaapi.service.TokenBlacklistService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -72,13 +73,14 @@ public class AuthController {
             String token = jwtUtil.generarToken(username, rol, consumerId);
             return ResponseEntity.ok(new LoginResponseDTO(token, "Bearer", rol, consumerId));
         } catch (BadCredentialsException | DisabledException e) {
-            return ResponseEntity.status(401).body(new ErrorResponseDTO(401, "Unauthorized", "Credenciales inválidas"));
+            return ResponseEntity.status(401).body(new ErrorResponseDTO(401, "Unauthorized", "Usuario o contraseña incorrectos."));
         }
     }
 
     // Cambio el @RequestBody para que reciba record RegistroDTO
+    //Se usa el @valid que faltaba en los registros para que se validen las restricciones de los campos del DTO.
     @PostMapping("/register")
-    public ResponseEntity<MessageResponseDTO> register(@RequestBody com.utn.space.venueaapi.model.records.RegistroDTO dto) {
+    public ResponseEntity<MessageResponseDTO> register(@Valid @RequestBody com.utn.space.venueaapi.model.records.RegistroDTO dto) {
 
         registrationService.register(dto);
         // La notificación de bienvenida no debe hacer fallar el registro:
