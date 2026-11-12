@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -48,6 +49,7 @@ public class SpaceServiceItemController {
 
     //Este es el metodo que un Owner usaria para insertar servicios en uno de sus Espacios
     @PostMapping("/insert")
+    @PreAuthorize("hasAnyRole('OFFERER', 'ADMIN')")
     @Operation(
             summary = "Crear un Servicio."
     )
@@ -83,6 +85,7 @@ public class SpaceServiceItemController {
     }
 
     @PutMapping("/update/{id}")
+    @PreAuthorize("hasAnyRole('OFFERER', 'ADMIN')")
     @Operation(
             summary = "Actualiza un Servicio."
     )
@@ -119,6 +122,7 @@ public class SpaceServiceItemController {
     }
 
     @DeleteMapping("/space/{idSpace}/delete/{id}")
+    @PreAuthorize("hasAnyRole('OFFERER', 'ADMIN')")
     @Operation(
             summary = "Elimina un Servicio."
     )

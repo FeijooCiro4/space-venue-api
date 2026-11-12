@@ -6,8 +6,10 @@ import com.utn.space.venueaapi.exceptions.NameNotFoundException;
 import com.utn.space.venueaapi.model.Consumer;
 import com.utn.space.venueaapi.model.Credential;
 import com.utn.space.venueaapi.model.EDeactivationReason;
+import com.utn.space.venueaapi.model.ERoles;
 import com.utn.space.venueaapi.model.records.ConsumerFilterDTO;
 import com.utn.space.venueaapi.repository.ConsumerRepository;
+import com.utn.space.venueaapi.repository.SpaceRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
@@ -23,6 +25,9 @@ import java.util.List;
 public class ConsumerService {
     @Autowired
     private final ConsumerRepository consumerRepository;
+
+    @Autowired
+    private final SpaceRepository spaceRepository;
 
     public Boolean existsById(Integer id){
         return consumerRepository.existsById(id);
@@ -134,6 +139,31 @@ public class ConsumerService {
         // Apagamos el flag de activo
         credential.setIsActive(false);
         credential.setDeactivationReason(EDeactivationReason.ADMIN);
+        consumerRepository.save(consumer);
+    }
+
+    //Permite al admin cambiar el rol de un usuario entre CLIENT y OFFERER (el que puede publicar espacios).
+    //No se pueden dar ni quitar permisos de ADMIN por este medio
+    @Transactional
+    public void setRol(Integer id, ERoles rol) {
+        Consumer consumer = findById(id);
+
+        Credential credential = consumer.getCredentials();
+        if (credential == null) {
+            throw new NameNotFoundException("No se encontraron credenciales para este usuario");
+        }
+        if (rol != ERoles.ROLE_CLIENT && rol != ERoles.ROLE_OFFERER) {
+            throw new InvalidDataException("Solo se puede asignar el rol de cliente u oferente.");
+        }
+        if (credential.getRol() == ERoles.ROLE_ADMIN) {
+            throw new InvalidDataException("No se puede cambiar el rol de un administrador.");
+        }
+        if (rol == ERoles.ROLE_CLIENT && credential.getRol() == ERoles.ROLE_OFFERER
+                && spaceRepository.existsByConsumerOwnerIdConsumerAndDeletedByOwnerFalse(id)) {
+            throw new InvalidDataException("El usuario tiene espacios publicados. Deben eliminarse antes de quitarle el rol de oferente.");
+        }
+
+        credential.setRol(rol);
         consumerRepository.save(consumer);
     }
 }

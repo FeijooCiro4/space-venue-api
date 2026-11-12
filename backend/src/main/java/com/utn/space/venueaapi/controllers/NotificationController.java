@@ -38,7 +38,7 @@ public class NotificationController {
 
 ///------------------------------------------------Metodos--------------------------------------------------------------------
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'CLIENT')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'CLIENT', 'OFFERER')")
     @Operation(
             summary = "Registra una notificación automática para un usuario.",
             description = "Permite al front registrar una notificación generada por el sistema para el usuario indicado."
@@ -63,7 +63,7 @@ public class NotificationController {
             @ApiResponse(responseCode = "201", description = "Notificación creada",
                     content = @Content(schema = @Schema(implementation = Map.class))),
             @ApiResponse(responseCode = "400", description = "Datos inválidos"),
-            @ApiResponse(responseCode = "403", description = "Se requiere rol CLIENT o ADMIN"),
+            @ApiResponse(responseCode = "403", description = "Se requiere rol CLIENT, OFFERER o ADMIN"),
             @ApiResponse(responseCode = "404", description = "No se encontró el usuario destinatario")
     })
     public ResponseEntity<Map<String, Object>> createNotification(@Valid @RequestBody NotificationCreateDTO request) {
@@ -90,7 +90,7 @@ public class NotificationController {
             summary = "Busca notificaciones del usuario autenticado.",
             description = "Devuelve las notificaciones del usuario logueado."
     )
-    @PreAuthorize("hasAnyRole('CLIENT', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CLIENT', 'OFFERER', 'ADMIN')")
     public ResponseEntity<List<Map<String, Object>>> getMyNotifications(){
         List<Map<String, Object>> out = notificationService.listAllByIdConsumerForConsumer().stream().map(this::toDto).toList();
         return ResponseEntity.ok(out);
@@ -101,7 +101,7 @@ public class NotificationController {
             summary = "Cuenta las notificaciones no vistas del usuario logueado.",
             description = "Devuelve un objeto JSON con el conteo de notificaciones donde isSeen = false."
     )
-    @PreAuthorize("hasAnyRole('CLIENT', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CLIENT', 'OFFERER', 'ADMIN')")
     public ResponseEntity<java.util.Map<String, Long>> getUnreadCount() {
         long count = notificationService.countUnseenForConsumer();
         return ResponseEntity.ok(java.util.Map.of("count", count));
@@ -112,7 +112,7 @@ public class NotificationController {
             summary = "Busca todas las notificaciones de un Usuario.",
             description = "Devuelve la lista de las Notificaciones un Usuario."
     )
-    @PreAuthorize("hasAnyRole('CLIENT', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CLIENT', 'OFFERER', 'ADMIN')")
     public ResponseEntity<List<Map<String, Object>>>findAllByIdConsumer(@Parameter(description = "ID del Usuario") @PathVariable Integer id, Authentication authentication){
         List<Notification> list;
         if (authentication.getAuthorities().stream().anyMatch(r -> Objects.equals(r.getAuthority(), "ROLE_ADMIN"))){
@@ -130,7 +130,7 @@ public class NotificationController {
             summary = "Busca todas las notificaciones, no vistas, de un Usuario.",
             description = "Devuelve la lista de las Notificaciones con el Atributo (isSeen = false) un Usuario."
     )
-    @PreAuthorize("hasAnyRole('CLIENT', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CLIENT', 'OFFERER', 'ADMIN')")
     public ResponseEntity<List<Map<String, Object>>> findAllUnseenByIdconsumer(){
         List<Map<String, Object>> out = notificationService.listAllUnseenForConsumer().stream().map(this::toDto).toList();
         return ResponseEntity.ok(out);
@@ -161,7 +161,7 @@ public class NotificationController {
     }
 
     @PatchMapping("/me/read")
-    @PreAuthorize("hasAnyRole('CLIENT', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CLIENT', 'OFFERER', 'ADMIN')")
     @Operation(
             summary = "Marca como vistas todas las notificaciones del usuario autenticado.",
             description = "Actualiza únicamente las notificaciones no vistas del usuario autenticado."

@@ -50,7 +50,7 @@ public class SpaceImageController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or @securityUtils.isSpaceImageOwner(#id, authentication.name)")
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('OFFERER') and @securityUtils.isSpaceImageOwner(#id, authentication.name))")
     @Operation(
             summary = "Borrar una Imagen."
     )
@@ -59,7 +59,7 @@ public class SpaceImageController {
     }
 
     @PostMapping("/upload-url")
-    @PreAuthorize("hasRole('ADMIN') or @securityUtils.isSpaceOwner(#request.idSpace(), authentication.name)")
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('OFFERER') and @securityUtils.isSpaceOwner(#request.idSpace(), authentication.name))")
     @Operation(
             summary = "Genera una URL para subir una Imagen directamente a S3.",
             description = "El cliente hace un PUT del archivo a uploadUrl (con el mismo Content-Type) y después crea la Imagen con urlImage = key."
@@ -69,7 +69,7 @@ public class SpaceImageController {
     }
 
     @PostMapping()
-    @PreAuthorize("hasRole('ADMIN') or @securityUtils.isSpaceOwner(#spaceImageDTO.idSpace(), authentication.name)")
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('OFFERER') and @securityUtils.isSpaceOwner(#spaceImageDTO.idSpace(), authentication.name))")
     @Operation(
             summary = "Crea una Imagen."
     )
@@ -97,7 +97,7 @@ public class SpaceImageController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or (@securityUtils.isSpaceImageOwner(#id, authentication.name) and @securityUtils.isSpaceOwner(#spaceImageDTO.idSpace(), authentication.name))")
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('OFFERER') and @securityUtils.isSpaceImageOwner(#id, authentication.name) and @securityUtils.isSpaceOwner(#spaceImageDTO.idSpace(), authentication.name))")
     @Operation(
             summary = "Modifica una Imagen."
     )

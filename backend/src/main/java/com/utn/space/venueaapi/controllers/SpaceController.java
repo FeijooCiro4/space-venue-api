@@ -52,7 +52,7 @@ public class SpaceController {
 
     //Muestro todos los espacios de un owner, incluyendo inactivos
     @GetMapping("/ownedspaces")
-    @PreAuthorize("hasAnyRole('CLIENT', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('OFFERER', 'ADMIN')")
     @Operation(
             summary = "Busca TODOS los Espacios del Usuario."
     )
@@ -121,7 +121,7 @@ public class SpaceController {
 
     //Lo que hace @Validated es no permitir que se mande un DTO incompleto
     @PostMapping("/ownedspace")
-    @PreAuthorize("hasAnyRole('CLIENT', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('OFFERER', 'ADMIN')")
     @Operation(
             summary = "Crea un nuevo Espacio."
     )
@@ -157,7 +157,7 @@ public class SpaceController {
     }
 
     @PutMapping("/ownedspace/{id}")
-    @PreAuthorize("hasAnyRole('CLIENT', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('OFFERER', 'ADMIN')")
     @Operation(
             summary = "Modifica un Espacio."
     )
@@ -272,7 +272,7 @@ public class SpaceController {
     }
 
     @RequestMapping(value = "/ownedspaces/byfields", method = {RequestMethod.GET, RequestMethod.POST})
-    @PreAuthorize("hasAnyRole('CLIENT', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('OFFERER', 'ADMIN')")
     @Operation(
             summary = "Busca TODOS los Espacios filtrados de un dueño. Funciona como GET Y POST para poder mandar el filtro en el body."
     )
@@ -281,7 +281,7 @@ public class SpaceController {
     }
 
     @DeleteMapping("/ownedspace/{id}")
-    @PreAuthorize("hasAnyRole('CLIENT', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('OFFERER', 'ADMIN')")
     @Operation(
             summary = "Borra un Espacio propio.",
             description = "Borra un Espacio propio por su ID."

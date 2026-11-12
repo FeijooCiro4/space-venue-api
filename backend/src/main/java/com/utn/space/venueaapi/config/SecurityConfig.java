@@ -77,7 +77,7 @@ public class SecurityConfig {
                         // Todas las rutas que empiecen con /api/admin requieren obligatoriamente ROLE_ADMIN
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
-                        // CUALQUIER OTRA RUTA (Exige estar autenticado como CLIENT o ADMIN)
+                        // CUALQUIER OTRA RUTA (Exige estar autenticado como CLIENT, OFFERER o ADMIN)
                         .anyRequest().authenticated()
                 );
 
