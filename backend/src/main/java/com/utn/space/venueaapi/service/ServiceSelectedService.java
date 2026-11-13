@@ -47,7 +47,7 @@ public class ServiceSelectedService {
                     || !Boolean.TRUE.equals(item.getIsActive())) {
                 throw new InvalidReservationException("El servicio debe estar activo y pertenecer al espacio reservado.");
             }
-            if (item.getPrice() == null || item.getPrice().signum() <= 0) {
+            if (item.getPrice() == null || item.getPrice().signum() < 0) {
                 throw new InvalidReservationException("El servicio del catálogo no tiene un precio válido.");
             }
             additions.add(new ServiceSelected(item, reservation));

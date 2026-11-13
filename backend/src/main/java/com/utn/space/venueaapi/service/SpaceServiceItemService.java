@@ -52,7 +52,7 @@ public class SpaceServiceItemService {
 
     @Transactional
     public void insertServiceItem(SpaceServiceItemDTO serviceItemDTO){
-        if(serviceItemDTO.price().compareTo(BigDecimal.ZERO) <= 0) throw new InvalidDataException("El precio de un servicio no puede ser negativo.");
+        if(serviceItemDTO.price() == null || serviceItemDTO.price().signum() < 0) throw new InvalidDataException("El precio de un servicio no puede ser negativo.");
 
         Space space = spaceService.findById(serviceItemDTO.idSpace());
         spaceService.onContentChangedByOwner(space);
@@ -79,7 +79,7 @@ public class SpaceServiceItemService {
             throw new IdNotFoundException("el servicio", id);
         }
 
-        if(serviceItemDTO.price().compareTo(BigDecimal.ZERO) <= 0) throw new InvalidDataException("El precio de un servicio no puede ser negativo.");
+        if(serviceItemDTO.price() == null || serviceItemDTO.price().signum() < 0) throw new InvalidDataException("El precio de un servicio no puede ser negativo.");
 
         Space space = spaceService.findById(serviceItemDTO.idSpace());
         spaceService.onContentChangedByOwner(space);
