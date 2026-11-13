@@ -3,16 +3,19 @@ package com.utn.space.venueaapi.service;
 import com.utn.space.venueaapi.exceptions.IdNotFoundException;
 import com.utn.space.venueaapi.exceptions.InvalidDataException;
 import com.utn.space.venueaapi.model.Comment;
+import com.utn.space.venueaapi.model.ECommentDeactivationReason;
 import com.utn.space.venueaapi.model.Reservation;
 import com.utn.space.venueaapi.model.ReservationStatus;
 import com.utn.space.venueaapi.model.records.CommentDTO;
 import com.utn.space.venueaapi.repository.CommentRepository;
 import com.utn.space.venueaapi.repository.ReservationRepository;
 import com.utn.space.venueaapi.service.mappers.CommentMapper;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -27,14 +30,21 @@ public class CommentService {
     ReservationService reservationService;
     @Autowired
     ReservationRepository reservationRepository;
+    @Autowired
+    NotificationService notificationService;
 
-    public List<CommentDTO> findAll(){
-        List<Comment> commentList = commentRepository.findAll();
-         return commentList.stream().map(CommentMapper::mapToDTO).toList();
+    public List<CommentDTO> findAll() {
+        return commentRepository.findAllActive()
+                .stream()
+                .map(CommentMapper::mapToDTO)
+                .toList();
     }
 
-    public CommentDTO findById(Integer id){
-        return CommentMapper.mapToDTO(commentRepository.findById(id).orElseThrow(()-> new IdNotFoundException("el comentario", id)));
+    public CommentDTO findById(Integer id) {
+        return CommentMapper.mapToDTO(
+                commentRepository.findActiveById(id)
+                        .orElseThrow(() -> new IdNotFoundException("el comentario", id))
+        );
     }
 
     public void deleteById(Integer id){
@@ -44,6 +54,28 @@ public class CommentService {
         commentRepository.deleteById(id);
     }
 
+    @Transactional
+    public void adminDeletion(Integer id){
+        if(!commentRepository.existsById(id)){
+            throw new IdNotFoundException("el comentario", id);
+        }
+
+        Comment comment = commentRepository.findById(id).orElseThrow(()-> new IdNotFoundException("el comentario", id));
+
+        if(!comment.getIsActive()){
+            throw new InvalidDataException("El comentario ya se encuentra desactivado.");
+        }
+
+        comment.setIsActive(false);
+        comment.setDeactivationReason(ECommentDeactivationReason.ADMIN);
+        commentRepository.save(comment);
+
+        notificationService.createNotification(
+                comment.getConsumer(),
+                "Su comentario en el espacio " + comment.getSpace().getNameSpace() + " que decia '" + comment.getDescription() + "' ha sido eliminado por un administrador."
+        );
+    }
+
     public void deleteByIdCustomer(Integer id){
         Comment commentToDelete = commentRepository.findById(id).orElseThrow(()-> new IdNotFoundException("el comentario", id));
         //Logica para que un usuario solo elimine comentarios propios
@@ -51,6 +83,21 @@ public class CommentService {
             throw new AccessDeniedException("No se puede eliminar un comentario que no es propio");
         }
         commentRepository.deleteById(id);
+    }
+
+    public void consumerDeletion(Integer id){
+        Comment commentToDelete = commentRepository.findById(id).orElseThrow(()-> new IdNotFoundException("el comentario", id));
+        if(!commentToDelete.getConsumer().getIdConsumer().equals(consumerService.getLoggedConsumerId())){
+            throw new AccessDeniedException("No se puede eliminar un comentario que no es propio");
+        }
+
+        if(!commentToDelete.getIsActive()){
+            throw new InvalidDataException("El comentario ya se encuentra desactivado.");
+        }
+
+        commentToDelete.setIsActive(false);
+        commentToDelete.setDeactivationReason(ECommentDeactivationReason.AUTHOR_REQUEST);
+        commentRepository.save(commentToDelete);
     }
 
     public void insertComment(CommentDTO commentDTO){
@@ -70,6 +117,8 @@ public class CommentService {
                 spaceService.findById(commentDTO.idSpace()),
                 commentDTO.description(),
                 commentDTO.score(),
+                true,
+                null,
                 java.time.LocalDateTime.now());
 
         commentRepository.save(commentToInsert);
@@ -85,6 +134,13 @@ public class CommentService {
             throw new InvalidDataException("Por favor ingrese una descripción para su comentario.");
         }
 
+        Comment existingComment = commentRepository.findById(id)
+                .orElseThrow(() -> new IdNotFoundException("el comentario", id));
+
+        if (!Boolean.TRUE.equals(existingComment.getIsActive())) {
+            throw new InvalidDataException("No se puede modificar un comentario que no está activo.");
+        }
+
         if((commentDTO.score()*2) % 1 != 0){
             throw new InvalidDataException("La puntuación ingresada no es válida.");
         }
@@ -97,7 +153,9 @@ public class CommentService {
                 spaceService.findById(commentDTO.idSpace()),
                 commentDTO.description(),
                 commentDTO.score(),
-                commentDTO.created_at());
+                true,
+                null,
+                LocalDateTime.now());
 
         commentRepository.save(commentToInsert);
     }
@@ -117,14 +175,33 @@ public class CommentService {
         List<Comment> commentList = commentRepository.findAllByConsumerIdConsumer(consumerId);
         return commentList.stream().map(comment -> CommentMapper.mapToDTO(comment)).toList();
     }
-    public List<CommentDTO> filterByScoreASC(){
-        List<Comment> commentList =commentRepository.findAllByOrderByScoreAsc();
-        return commentList.stream().map(comment -> CommentMapper.mapToDTO(comment)).toList();
+
+    public List<CommentDTO> findDeactivatedCommentsBySpaceId(Integer spaceId){
+        validateSpaceExists(spaceId);
+        List<Comment> commentList = commentRepository.findDeactivatedCommentsForSpace(spaceId);
+        return commentList.stream().map(CommentMapper::mapToDTO).toList();
     }
 
-    public List<CommentDTO> filterByScoreDESC(){
-        List<Comment> commentList =commentRepository.findAllByOrderByScoreDesc();
-        return commentList.stream().map(comment -> CommentMapper.mapToDTO(comment)).toList();
+    public List<CommentDTO> findDeactivatedCommentsByConsumerId(Integer consumerId){
+        if(!consumerService.existsById(consumerId)){
+            throw new IdNotFoundException("el usuario", consumerId);
+        }
+        List<Comment> commentList = commentRepository.findDeactivatedCommentsForConsumer(consumerId);
+        return commentList.stream().map(CommentMapper::mapToDTO).toList();
+    }
+
+    public List<CommentDTO> filterByScoreASC() {
+        return commentRepository.findAllActiveOrderByScoreAsc()
+                .stream()
+                .map(CommentMapper::mapToDTO)
+                .toList();
+    }
+
+    public List<CommentDTO> filterByScoreDESC() {
+        return commentRepository.findAllActiveOrderByScoreDesc()
+                .stream()
+                .map(CommentMapper::mapToDTO)
+                .toList();
     }
 
     public void consumerInsertCommentOnSpace(CommentDTO commentDTO){

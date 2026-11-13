@@ -20,6 +20,8 @@ public class CommentMapper {
                 comment.getSpace().getIdSpace(),
                 comment.getDescription(),
                 comment.getScore(),
+                comment.getIsActive(),
+                comment.getDeactivationReason() != null ? comment.getDeactivationReason().name() : null,
                 comment.getCreatedAt());
 
         return dto;
