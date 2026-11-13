@@ -31,6 +31,12 @@ public class Comment {
     @Column(name = "score", nullable = false)
     private Byte score;
 
+    @Column(name = "isActive", nullable = false)
+    private Boolean isActive = true;
+
+    @Enumerated(EnumType.STRING)
+    private ECommentDeactivationReason deactivationReason;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 }

@@ -1,6 +1,5 @@
 package com.utn.space.venueaapi.controllers;
 
-import com.utn.space.venueaapi.model.Comment;
 import com.utn.space.venueaapi.model.records.CommentDTO;
 import com.utn.space.venueaapi.service.CommentService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -57,6 +56,20 @@ public class CommentController {
         }else {
             //Logica si es un client
             commentService.deleteByIdCustomer(id);
+        }
+    }
+
+    @DeleteMapping("/deactivate/{id}")
+    @PreAuthorize("hasAnyRole('CLIENT', 'OFFERER', 'ADMIN')")
+    @Operation(
+            summary = "Elimina un Comentario.",
+            description = "Elimina, en baja lógica, un Comentario por ID."
+    )
+    public void lowDeleteCommentById(@PathVariable Integer id, Authentication authentication){
+        if (authentication.getAuthorities().stream().anyMatch(r -> Objects.equals(r.getAuthority(), "ROLE_ADMIN"))){
+            commentService.adminDeletion(id);
+        } else {
+            commentService.consumerDeletion(id);
         }
     }
 
@@ -147,6 +160,27 @@ public class CommentController {
     public ResponseEntity<List<CommentDTO>> findAllByConsumerId(@PathVariable Integer id){
         return ResponseEntity.ok(commentService.findAllByConsumerId(id));
     }
+
+    @GetMapping("/byspaceid/{id}/deactivated")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Busca los comentarios desactivados de un espacio.",
+            description = "Devuelve los comentarios desactivados asociados al espacio indicado. Solo accesible para administradores."
+    )
+    public ResponseEntity<List<CommentDTO>> findDeactivatedBySpaceId(@PathVariable Integer id){
+        return ResponseEntity.ok(commentService.findDeactivatedCommentsBySpaceId(id));
+    }
+
+    @GetMapping("/byconsumerid/{id}/deactivated")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Busca los comentarios desactivados de un consumidor.",
+            description = "Devuelve los comentarios desactivados asociados al consumidor indicado. Solo accesible para administradores."
+    )
+    public ResponseEntity<List<CommentDTO>> findDeactivatedByConsumerId(@PathVariable Integer id){
+        return ResponseEntity.ok(commentService.findDeactivatedCommentsByConsumerId(id));
+    }
+
     @GetMapping("/byscore/asc")
     @Operation(
             summary = "Busca TODOS los Comentarios.",

@@ -36,6 +36,12 @@ public record CommentDTO (
         @Schema(description = "Valoracion del comentario", example = "1")
         Byte score,
 
+        @Schema(description = "Indica si el comentario esta activo o no", example = "true")
+        Boolean isActive,
+
+        @Schema(description = "Motivo de desactivacion del comentario", example = "INAPPROPRIATE_CONTENT")
+        String deactivationReason,
+
         LocalDateTime created_at){
 
 }
