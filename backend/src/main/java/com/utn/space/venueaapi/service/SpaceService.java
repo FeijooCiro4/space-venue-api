@@ -344,6 +344,9 @@ public class SpaceService {
 
         if (spaceDTO.services() != null && !spaceDTO.services().isEmpty()) {
             List<SpaceServiceItem> items = spaceDTO.services().stream().map(sDto -> {
+                if (sDto.price() == null || sDto.price().signum() < 0) {
+                    throw new InvalidDataException("El precio de un servicio no puede ser negativo.");
+                }
                 SpaceServiceItem item = new SpaceServiceItem();
                 item.setDescription(sDto.description());
                 item.setPrice(sDto.price());
