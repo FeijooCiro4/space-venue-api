@@ -76,6 +76,28 @@ public class CommentService {
         );
     }
 
+    @Transactional
+    public void adminActivation(Integer id){
+        if(!commentRepository.existsById(id)){
+            throw new IdNotFoundException("el comentario", id);
+        }
+
+        Comment comment = commentRepository.findById(id).orElseThrow(()-> new IdNotFoundException("el comentario", id));
+
+        if(comment.getIsActive()){
+            throw new InvalidDataException("El comentario ya se encuentra activado.");
+        }
+
+        comment.setIsActive(true);
+        comment.setDeactivationReason(null);
+        commentRepository.save(comment);
+
+        notificationService.createNotification(
+                comment.getConsumer(),
+                "Su comentario en el espacio " + comment.getSpace().getNameSpace() + " que decia '" + comment.getDescription() + "' ha sido reactivado por un administrador."
+        );
+    }
+
     public void deleteByIdCustomer(Integer id){
         Comment commentToDelete = commentRepository.findById(id).orElseThrow(()-> new IdNotFoundException("el comentario", id));
         //Logica para que un usuario solo elimine comentarios propios

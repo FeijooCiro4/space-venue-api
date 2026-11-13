@@ -73,6 +73,16 @@ public class CommentController {
         }
     }
 
+    @DeleteMapping("/activate/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN')")
+    @Operation(
+            summary = "Activar un Comentario.",
+            description = "Activar un Comentario por ID."
+    )
+    public void activateCommentById(@PathVariable Integer id, Authentication authentication){
+        commentService.adminActivation(id);
+    }
+
     @PostMapping()
     @PreAuthorize("hasAnyRole('CLIENT', 'OFFERER', 'ADMIN')")
     @Operation(
