@@ -3,6 +3,7 @@ package com.utn.space.venueaapi.service;
 import com.utn.space.venueaapi.exceptions.IdNotFoundException;
 import com.utn.space.venueaapi.exceptions.InvalidDataException;
 import com.utn.space.venueaapi.model.*;
+import com.utn.space.venueaapi.model.records.CommentDTO;
 import com.utn.space.venueaapi.model.records.SpaceDTO;
 import com.utn.space.venueaapi.model.records.SpaceFilterDTO;
 import com.utn.space.venueaapi.repository.SpaceRepository;
@@ -31,6 +32,8 @@ public class SpaceService {
     LocationService locationService;
     @Autowired
     CancellationPoliciesService cancellationPoliciesService;
+    @Autowired
+    CommentService commentService;
 
 
     public List<Space> findAll(){
@@ -381,6 +384,26 @@ public class SpaceService {
             return EPolicyType.valueOf(valor.trim().toUpperCase());
         } catch (IllegalArgumentException | NullPointerException e) {
             throw new InvalidDataException("La política de cancelación no es válida.");
+        }
+    }
+
+    public void calcularRatingYCount(Space space){
+        List<CommentDTO> lista = commentService.findAllBySpaceId(space.getIdSpace());
+        if(!lista.isEmpty()){
+            space.setCommentCount(lista.size());
+            int contador = 0;
+            for(CommentDTO commentDTO : lista){
+                contador +=  commentDTO.score();
+            }
+            double promedio = (double) contador / lista.size();
+            space.setRating(promedio);
+            spaceRepository.updateRatingAndCount(space.getIdSpace(), promedio, lista.size());
+
+        }
+        else{
+            space.setRating(0);
+            space.setCommentCount(0);
+            spaceRepository.updateRatingAndCount(space.getIdSpace(), 0, 0);
         }
     }
 }
