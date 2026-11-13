@@ -82,4 +82,15 @@ public interface ReservationRepository extends JpaRepository<Reservation,Integer
             @Param("newStatus") ReservationStatus newStatus,
             @Param("now") LocalDateTime now
     );
+
+    @Query("""
+    SELECT r.id FROM Reservation r
+    WHERE r.status = :status
+      AND r.isActive = true
+      AND r.fromDate < :now
+    """)
+    List<Integer> findExpiredTentativeReservationIds(
+            @Param("status") ReservationStatus status,
+            @Param("now") LocalDateTime now
+    );
 }

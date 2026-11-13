@@ -15,6 +15,7 @@ import java.util.List;
 @Component
 @RequiredArgsConstructor
 public class ReservationStatusScheduler {
+    private final ReservationService reservationService;
     private final ReservationRepository reservationRepository;
 
     @Scheduled(fixedRate = 10_000)
@@ -34,9 +35,20 @@ public class ReservationStatusScheduler {
                 now
         );
 
-        if (started > 0 || completed > 0) {
-            log.info("Estados de reservas actualizados: {} iniciadas, {} completadas",
-                    started, completed);
+        List<Integer> expiredIds = reservationRepository.findExpiredTentativeReservationIds(
+                ReservationStatus.TENTATIVE,
+                now
+        );
+
+        for (Integer id : expiredIds) {
+            reservationService.cancelReservation(id);
+        }
+
+        int expired = expiredIds.size();
+
+        if (started > 0 || completed > 0 || expired > 0) {
+            log.info("Estados de reservas actualizados: {} iniciadas, {} completadas, {} expiradas",
+                    started, completed, expired);
         }
     }
 }
