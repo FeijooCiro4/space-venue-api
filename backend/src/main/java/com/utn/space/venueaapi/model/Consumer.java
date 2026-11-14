@@ -1,10 +1,13 @@
 package com.utn.space.venueaapi.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
 
 @Data
 @AllArgsConstructor
@@ -27,5 +30,10 @@ public class Consumer {
     @OneToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "username")
     private Credential credentials;
+
+    // Fecha (UTC) de la última solicitud para ser oferente. Se usa para no permitir
+    // más de una solicitud cada 24 horas. null si nunca pidió serlo.
+    @JsonIgnore
+    private LocalDateTime offererRequestedAt;
 
 }

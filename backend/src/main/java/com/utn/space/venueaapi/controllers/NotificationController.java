@@ -41,12 +41,12 @@ public class NotificationController {
 
 ///------------------------------------------------Metodos--------------------------------------------------------------------
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'CLIENT', 'OFFERER')")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(
             summary = "Crea una notificación",
             description = """
                 Crea una notificación para el idConsumer enviado en el body.
-                La operación está permitida para ADMIN, CLIENT y OFFERER.
+                Solo ADMIN puede usarla, para evitar que cualquier usuario mande mensajes arbitrarios a otros.
                 """
     )
     @SecurityRequirement(name = "bearerAuth")
@@ -75,7 +75,7 @@ public class NotificationController {
                     )
             ),
             @ApiResponse(responseCode = "400", description = "Datos inválidos"),
-            @ApiResponse(responseCode = "403", description = "Se requiere rol CLIENT, OFFERER o ADMIN"),
+            @ApiResponse(responseCode = "403", description = "Se requiere rol ADMIN"),
             @ApiResponse(responseCode = "404", description = "No se encontró el usuario destinatario")
     })
     public ResponseEntity<Map<String, Object>> createNotification(@Valid @RequestBody NotificationCreateDTO request) {
@@ -84,6 +84,31 @@ public class NotificationController {
                 request.message()
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(toDto(created));
+    }
+
+    @PostMapping("/offerer-request")
+    @PreAuthorize("hasRole('CLIENT')")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(
+            summary = "Solicita el rol de oferente",
+            description = """
+                El usuario logueado (CLIENT) solicita ser oferente. Se envía una notificación a cada
+                administrador activo con el username, nombre y email del solicitante. El mensaje lo arma
+                el backend. Solo se permite una solicitud cada 24 horas por usuario.
+                """
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "Solicitud enviada",
+                    content = @Content(schema = @Schema(type = "object", example = "{\"notifiedAdmins\":2}"))
+            ),
+            @ApiResponse(responseCode = "400", description = "Ya hay una solicitud reciente, el usuario no es cliente o no hay administradores"),
+            @ApiResponse(responseCode = "403", description = "Se requiere rol CLIENT")
+    })
+    public ResponseEntity<Map<String, Integer>> requestOffererRole() {
+        int notifiedAdmins = notificationService.requestOffererRole();
+        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("notifiedAdmins", notifiedAdmins));
     }
 
     @GetMapping

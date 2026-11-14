@@ -1,11 +1,15 @@
 package com.utn.space.venueaapi.service;
 
 import com.utn.space.venueaapi.exceptions.IdNotFoundException;
+import com.utn.space.venueaapi.exceptions.InvalidDataException;
 import com.utn.space.venueaapi.model.Consumer;
+import com.utn.space.venueaapi.model.ERoles;
 import com.utn.space.venueaapi.model.Notification;
+import com.utn.space.venueaapi.repository.ConsumerRepository;
 import com.utn.space.venueaapi.repository.NotificationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -17,6 +21,11 @@ public class NotificationService {
     private NotificationRepository notificationRepository;
     @Autowired
     private ConsumerService consumerService;
+    @Autowired
+    private ConsumerRepository consumerRepository;
+
+    //Tiempo mínimo entre dos solicitudes para ser oferente del mismo usuario
+    private static final long HORAS_ENTRE_SOLICITUDES_OFERENTE = 24;
 
 
     ///--------------------------------Matodos-------------------------------------------------------------
@@ -87,5 +96,41 @@ public class NotificationService {
         notification.setCreatedAt(LocalDateTime.now(ZoneOffset.UTC));
         notification.setIsSeen(false);
         return notificationRepository.save(notification);
+    }
+
+    //El usuario logueado pide ser oferente: se manda una notificación a cada admin activo
+    //con sus datos de contacto. La verificación la hace el admin por mail y, si corresponde,
+    //le cambia el rol desde la gestión de usuarios. Devuelve a cuántos admins se notificó.
+    @Transactional
+    public int requestOffererRole() {
+        Consumer consumer = consumerService.findById(consumerService.getLoggedConsumerId());
+
+        if (consumer.getCredentials() == null || consumer.getCredentials().getRol() != ERoles.ROLE_CLIENT) {
+            throw new InvalidDataException("Solo un cliente puede solicitar ser oferente.");
+        }
+
+        LocalDateTime ahora = LocalDateTime.now(ZoneOffset.UTC);
+        LocalDateTime ultima = consumer.getOffererRequestedAt();
+        if (ultima != null && ultima.plusHours(HORAS_ENTRE_SOLICITUDES_OFERENTE).isAfter(ahora)) {
+            throw new InvalidDataException("Ya enviaste una solicitud para ser oferente. Podés volver a intentarlo pasadas 24 horas desde la última.");
+        }
+
+        List<Consumer> admins = consumerRepository.findAllActiveByRol(ERoles.ROLE_ADMIN);
+        if (admins.isEmpty()) {
+            throw new InvalidDataException("No hay administradores disponibles para recibir la solicitud.");
+        }
+
+        String message = String.format(
+                "El usuario %s (%s %s) solicita ser oferente. Contactalo por mail a %s para verificar sus datos y, si corresponde, cambiale el rol a Oferente desde la gestión de usuarios.",
+                consumer.getCredentials().getUsername(),
+                consumer.getFirstname(),
+                consumer.getLastname(),
+                consumer.getEmail()
+        );
+        admins.forEach(admin -> createNotification(admin, message));
+
+        consumer.setOffererRequestedAt(ahora);
+        consumerRepository.save(consumer);
+        return admins.size();
     }
 }
