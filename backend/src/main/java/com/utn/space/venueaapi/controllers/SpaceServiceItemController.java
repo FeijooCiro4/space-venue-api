@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -33,8 +34,13 @@ public class SpaceServiceItemController {
     //Con este metodo listamos los servicios de un espacio para que un consumer pueda seleccionar los que guste
     @GetMapping("/space/{idSpace}")
     @Operation(
-            summary = "Busca todos los Servicios de un Espacioi."
+            summary = "Lista los servicios de un espacio",
+            description = """
+                El administrador y el dueño ven el catálogo completo. Otros usuarios autenticados
+                solo reciben servicios activos y únicamente si el espacio también está activo.
+                """
     )
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<List<SpaceServiceItemDTO>> listServicesFromSpace(
             @PathVariable Integer idSpace,
             Authentication authentication){
@@ -53,6 +59,7 @@ public class SpaceServiceItemController {
     @Operation(
             summary = "Crear un Servicio."
     )
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<Void> insertServiceItem(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "Entra los datos obligatorios de la creación de un nuevo Servicio",
@@ -61,15 +68,17 @@ public class SpaceServiceItemController {
                             schema = @Schema(
                                     implementation = SpaceServiceItemDTO.class),
                             examples = @ExampleObject(
-                                    name = "Ejemplo",
+                                    name = "Crear servicio",
                                     value = """
                                     {
                                       "id": null,
-                                      "description":"Globos Inflables",
-                                      "price":75000.00,
-                                      "isActive":true,
-                                      "idSpace":48
-                                    """)
+                                      "description": "Globos inflables",
+                                      "price": 75000.00,
+                                      "isActive": true,
+                                      "idSpace": 48
+                                    }
+                                    """
+                            )
                     )
             )
             @Validated(Create.class) @RequestBody SpaceServiceItemDTO serviceItemDTO,
@@ -87,8 +96,13 @@ public class SpaceServiceItemController {
     @PutMapping("/update/{id}")
     @PreAuthorize("hasAnyRole('OFFERER', 'ADMIN')")
     @Operation(
-            summary = "Actualiza un Servicio."
+            summary = "Actualiza un Servicio.",
+            description = """
+                El administrador puede actualizar cualquier servicio. El dueño solo puede actualizar
+                servicios de sus propios espacios.
+                """
     )
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<Void> updateServiceItem(
             @PathVariable Integer id,
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
@@ -98,15 +112,17 @@ public class SpaceServiceItemController {
                             schema = @Schema(
                                     implementation = SpaceServiceItemDTO.class),
                             examples = @ExampleObject(
-                                    name = "Ejemplo",
+                                    name = "Actualizar servicio",
                                     value = """
                                     {
                                       "id": 25,
-                                      "description":"Globos Inflables",
-                                      "price":75000.00,
-                                      "isActive":true,
-                                      "idSpace":48
-                                    """)
+                                      "description": "Globos inflables",
+                                      "price": 75000.00,
+                                      "isActive": true,
+                                      "idSpace": 48
+                                    }
+                                    """
+                            )
                     )
             )
             @Validated(Update.class) @RequestBody SpaceServiceItemDTO serviceItemDTO,
@@ -124,8 +140,13 @@ public class SpaceServiceItemController {
     @DeleteMapping("/space/{idSpace}/delete/{id}")
     @PreAuthorize("hasAnyRole('OFFERER', 'ADMIN')")
     @Operation(
-            summary = "Elimina un Servicio."
+            summary = "Elimina un Servicio.",
+            description = """
+                El administrador puede eliminar cualquier servicio. El dueño solo puede eliminar
+                servicios de sus propios espacios.
+                """
     )
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<Void> deleteServiceFromSpace(
             @PathVariable Integer id,
             @PathVariable Integer idSpace,        //Revisar

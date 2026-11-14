@@ -12,6 +12,7 @@ import com.utn.space.venueaapi.service.TokenBlacklistService;
 import com.utn.space.venueaapi.model.records.CredentialRegistrationDTO;
 import com.utn.space.venueaapi.model.records.MessageResponseDTO;
 import com.utn.space.venueaapi.model.records.RegistroDTO;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
@@ -79,6 +80,7 @@ public class ConsumerController {
             summary = "Busca todos los usuarios.",
             description = "Devuelve una lista de todos los usuarios."
     )
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<List<Consumer>> listAllUsers() {
         return ResponseEntity.ok(consumerService.findAll());
     }
@@ -89,6 +91,7 @@ public class ConsumerController {
             summary = "Busca un Usuario",
             description = "Busca un usuarios usando su ID."
     )
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<Consumer> listById(@PathVariable Integer id) {
         return ResponseEntity.ok(consumerService.findById(id));
     }
@@ -99,6 +102,7 @@ public class ConsumerController {
             summary = "Cambia el estado de un Usuario.",
             description = "Activa (active=true) o desactiva (active=false) la cuenta de un usuario por ID. Un admin no puede desactivar su propia cuenta."
     )
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<MessageResponseDTO> toggleUserStatus(
             @PathVariable Integer id, @RequestParam Boolean active, Principal principal) {
         consumerService.setActive(id, active, principal.getName());
@@ -111,6 +115,7 @@ public class ConsumerController {
             summary = "Cambia el rol de un Usuario.",
             description = "Asigna ROLE_CLIENT o ROLE_OFFERER a un usuario por ID. Solo los OFFERER (y los ADMIN) pueden publicar espacios. No permite modificar administradores ni quitarle el rol OFFERER a quien todavía tiene espacios."
     )
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<MessageResponseDTO> changeUserRol(@PathVariable Integer id, @RequestParam ERoles rol) {
         consumerService.setRol(id, rol);
         return ResponseEntity.ok(new MessageResponseDTO(rol == ERoles.ROLE_OFFERER
@@ -125,6 +130,7 @@ public class ConsumerController {
             summary = "Busca los Usuarios por atributos.",
             description = "Crea una lista de usuario que cumplen con los atributos dados."
     )
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<List<Consumer>> findAllByFields(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "Filtros de búsqueda. Los campos en null se ignoran. Nombre, apellido, email y username buscan coincidencias parciales; el teléfono, exacta",
@@ -153,6 +159,7 @@ public class ConsumerController {
     @Operation(
             summary = "Elimina un usuario por ID."
     )
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<MessageResponseDTO> deleteById(@PathVariable Integer id){
         consumerService.deleteUserLogicallyById(id);
         return ResponseEntity.ok(new MessageResponseDTO("Usuario desactivado con exito"));
@@ -163,6 +170,7 @@ public class ConsumerController {
     @Operation(
             summary = "Actualiza un Usuario."
     )
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<MessageResponseDTO> updateUser(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "Entra los datos obligatorios de la creacion de una nueva Reserva",
@@ -212,6 +220,7 @@ public class ConsumerController {
             summary = "Elimina un Usuario.",
             description = "Hace un SoftDelete de un usuario."
     )
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<MessageResponseDTO> deleteUser(Principal principal, HttpServletRequest request) {
         String username = principal.getName();
         consumerService.deleteUserLogically(username);

@@ -2,15 +2,18 @@ package com.utn.space.venueaapi.controllers;
 
 import com.utn.space.venueaapi.model.Notification;
 import com.utn.space.venueaapi.model.records.NotificationCreateDTO;
+import com.utn.space.venueaapi.model.records.NotificationResponseDTO;
 import com.utn.space.venueaapi.service.ConsumerService;
 import com.utn.space.venueaapi.service.NotificationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -40,9 +43,13 @@ public class NotificationController {
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'CLIENT', 'OFFERER')")
     @Operation(
-            summary = "Registra una notificación automática para un usuario.",
-            description = "Permite al front registrar una notificación generada por el sistema para el usuario indicado."
+            summary = "Crea una notificación",
+            description = """
+                Crea una notificación para el idConsumer enviado en el body.
+                La operación está permitida para ADMIN, CLIENT y OFFERER.
+                """
     )
+    @SecurityRequirement(name = "bearerAuth")
     @io.swagger.v3.oas.annotations.parameters.RequestBody(
             description = "Identificador del destinatario y mensaje de la notificación.",
             required = true,
@@ -60,8 +67,13 @@ public class NotificationController {
             )
     )
     @ApiResponses({
-            @ApiResponse(responseCode = "201", description = "Notificación creada",
-                    content = @Content(schema = @Schema(implementation = Map.class))),
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "Notificación creada",
+                    content = @Content(
+                            schema = @Schema(implementation = NotificationResponseDTO.class)
+                    )
+            ),
             @ApiResponse(responseCode = "400", description = "Datos inválidos"),
             @ApiResponse(responseCode = "403", description = "Se requiere rol CLIENT, OFFERER o ADMIN"),
             @ApiResponse(responseCode = "404", description = "No se encontró el usuario destinatario")
@@ -79,7 +91,15 @@ public class NotificationController {
             summary = "Busca todas las notificaciones (solo para ADMIN).",
             description = "Devuelve la lista de TODAS las Notificaciones (solo accesible para administradores)."
     )
+    @ApiResponse(
+            responseCode = "200",
+            description = "Lista de notificaciones",
+            content = @Content(array = @ArraySchema(
+                    schema = @Schema(implementation = NotificationResponseDTO.class)
+            ))
+    )
     @PreAuthorize("hasRole('ADMIN')")
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<List<Map<String, Object>>> listAll (){
         List<Map<String, Object>> out = notificationService.listAll().stream().map(this::toDto).toList();
         return ResponseEntity.ok(out);
@@ -90,7 +110,15 @@ public class NotificationController {
             summary = "Busca notificaciones del usuario autenticado.",
             description = "Devuelve las notificaciones del usuario logueado."
     )
+    @ApiResponse(
+            responseCode = "200",
+            description = "Lista de notificaciones",
+            content = @Content(array = @ArraySchema(
+                    schema = @Schema(implementation = NotificationResponseDTO.class)
+            ))
+    )
     @PreAuthorize("hasAnyRole('CLIENT', 'OFFERER', 'ADMIN')")
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<List<Map<String, Object>>> getMyNotifications(){
         List<Map<String, Object>> out = notificationService.listAllByIdConsumerForConsumer().stream().map(this::toDto).toList();
         return ResponseEntity.ok(out);
@@ -101,7 +129,18 @@ public class NotificationController {
             summary = "Cuenta las notificaciones no vistas del usuario logueado.",
             description = "Devuelve un objeto JSON con el conteo de notificaciones donde isSeen = false."
     )
+    @ApiResponse(
+            responseCode = "200",
+            description = "Cantidad de notificaciones no vistas",
+            content = @Content(
+                    schema = @Schema(
+                            type = "object",
+                            example = "{\"count\":3}"
+                    )
+            )
+    )
     @PreAuthorize("hasAnyRole('CLIENT', 'OFFERER', 'ADMIN')")
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<java.util.Map<String, Long>> getUnreadCount() {
         long count = notificationService.countUnseenForConsumer();
         return ResponseEntity.ok(java.util.Map.of("count", count));
@@ -109,10 +148,21 @@ public class NotificationController {
 
     @GetMapping("/consumer/{id}")
     @Operation(
-            summary = "Busca todas las notificaciones de un Usuario.",
-            description = "Devuelve la lista de las Notificaciones un Usuario."
+            summary = "Busca notificaciones de un consumidor",
+            description = """
+                ADMIN obtiene las notificaciones del id indicado. CLIENT y OFFERER obtienen
+                sus propias notificaciones; para esos roles, el id de la ruta se ignora.
+                """
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "Lista de notificaciones",
+            content = @Content(array = @ArraySchema(
+                    schema = @Schema(implementation = NotificationResponseDTO.class)
+            ))
     )
     @PreAuthorize("hasAnyRole('CLIENT', 'OFFERER', 'ADMIN')")
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<List<Map<String, Object>>>findAllByIdConsumer(@Parameter(description = "ID del Usuario") @PathVariable Integer id, Authentication authentication){
         List<Notification> list;
         if (authentication.getAuthorities().stream().anyMatch(r -> Objects.equals(r.getAuthority(), "ROLE_ADMIN"))){
@@ -130,7 +180,15 @@ public class NotificationController {
             summary = "Busca todas las notificaciones, no vistas, de un Usuario.",
             description = "Devuelve la lista de las Notificaciones con el Atributo (isSeen = false) un Usuario."
     )
+    @ApiResponse(
+            responseCode = "200",
+            description = "Lista de notificaciones",
+            content = @Content(array = @ArraySchema(
+                    schema = @Schema(implementation = NotificationResponseDTO.class)
+            ))
+    )
     @PreAuthorize("hasAnyRole('CLIENT', 'OFFERER', 'ADMIN')")
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<List<Map<String, Object>>> findAllUnseenByIdconsumer(){
         List<Map<String, Object>> out = notificationService.listAllUnseenForConsumer().stream().map(this::toDto).toList();
         return ResponseEntity.ok(out);
@@ -142,6 +200,12 @@ public class NotificationController {
             summary = "Busca una notificación en particular.",
             description = "Busca una notificación por su ID."
     )
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponse(
+            responseCode = "200",
+            description = "Notificación",
+            content = @Content(schema = @Schema(implementation = NotificationResponseDTO.class))
+    )
     public ResponseEntity<Map<String, Object>> findById(@Parameter(description = "ID de la notificación") @PathVariable Integer id){
         Notification n = notificationService.findById(id);
         return ResponseEntity.status(HttpStatus.OK).body(toDto(n));
@@ -150,10 +214,15 @@ public class NotificationController {
 
     @PostMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or @securityUtils.isNotificationConsumer(#id, authentication.name)")
-
+    @SecurityRequirement(name = "bearerAuth")
     @Operation(
             summary = "Marca como vista a una notificación",
             description = "Busca una notificación por su ID y la marca como vista."
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "Notificación",
+            content = @Content(schema = @Schema(implementation = NotificationResponseDTO.class))
     )
     public ResponseEntity<Map<String, Object>> markAsSeen (@Parameter(description = "ID del notificación") @PathVariable Integer id){
         Notification updated = notificationService.markAsSeen(id);
@@ -161,11 +230,22 @@ public class NotificationController {
     }
 
     @PatchMapping("/me/read")
-    @PreAuthorize("hasAnyRole('CLIENT', 'OFFERER', 'ADMIN')")
     @Operation(
             summary = "Marca como vistas todas las notificaciones del usuario autenticado.",
             description = "Actualiza únicamente las notificaciones no vistas del usuario autenticado."
     )
+    @ApiResponse(
+            responseCode = "200",
+            description = "Cantidad de notificaciones que se marcaron como vistas",
+            content = @Content(
+                    schema = @Schema(
+                            type = "object",
+                            example = "{\"updatedCount\":3}"
+                    )
+            )
+    )
+    @PreAuthorize("hasAnyRole('CLIENT', 'OFFERER', 'ADMIN')")
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<Map<String, Integer>> markAllAsSeenForMe() {
         int updatedCount = notificationService.markAllAsSeenForLoggedConsumer();
         return ResponseEntity.ok(Map.of("updatedCount", updatedCount));

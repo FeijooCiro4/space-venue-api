@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -29,6 +30,7 @@ public class CommentController {
             summary = "Busca TODOS los Comentarios.",
             description = "Devuelve una lista Completa de Comentarios."
     )
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<List<CommentDTO>> listAllComments(){
         return ResponseEntity.ok(commentService.findAll());
     }
@@ -38,6 +40,7 @@ public class CommentController {
             summary = "Busca un Comentario.",
             description = "Busca un Comentario por su ID."
     )
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<CommentDTO> findCommentById(@PathVariable Integer id){
         return ResponseEntity.ok(commentService.findById(id));
     }
@@ -48,6 +51,7 @@ public class CommentController {
             summary = "Elimina un Comentario.",
             description = "Elimina un Comentario por ID."
     )
+    @SecurityRequirement(name = "bearerAuth")
     public void deleteCommentById(@PathVariable Integer id, Authentication authentication){
         //Las autoridades se obtienen de la autenticación del JWT
         if (authentication.getAuthorities().stream().anyMatch(r -> Objects.equals(r.getAuthority(), "ROLE_ADMIN"))){
@@ -65,6 +69,7 @@ public class CommentController {
             summary = "Elimina un Comentario.",
             description = "Elimina, en baja lógica, un Comentario por ID."
     )
+    @SecurityRequirement(name = "bearerAuth")
     public void lowDeleteCommentById(@PathVariable Integer id, Authentication authentication){
         if (authentication.getAuthorities().stream().anyMatch(r -> Objects.equals(r.getAuthority(), "ROLE_ADMIN"))){
             commentService.adminDeletion(id);
@@ -79,6 +84,7 @@ public class CommentController {
             summary = "Activar un Comentario.",
             description = "Activar un Comentario por ID."
     )
+    @SecurityRequirement(name = "bearerAuth")
     public void activateCommentById(@PathVariable Integer id, Authentication authentication){
         commentService.adminActivation(id);
     }
@@ -86,25 +92,36 @@ public class CommentController {
     @PostMapping()
     @PreAuthorize("hasAnyRole('CLIENT', 'OFFERER', 'ADMIN')")
     @Operation(
-            summary = "Permite comentar sobre un espacio",
-            description = "Permite a un usuario con permisos de CLIENT, OFFERER o ADMIN comentar sobre un espacio sobre el que tengan registrada al menos una reserva."
+            summary = "Comenta un espacio",
+            description = """
+                Un usuario autenticado puede comentar un espacio si tiene una reserva activa
+                en estado CONFIRMED o COMPLETED. Para usuarios no administradores, la autoría
+                se determina con la sesión, no con idConsumer o username del body.
+                """
     )
+    @SecurityRequirement(name = "bearerAuth")
     public void insertComment(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
-                    description = "Entra los datos obligatorios de la creacion de una nueva Reserva",
+                    description = "Espacio, texto y puntuación del comentario. La puntuación va de 0 a 5.",
                     required = true,
                     content = @Content(
-                            schema = @Schema(
-                                    implementation = CommentDTO.class),
+                            schema = @Schema(implementation = CommentDTO.class),
                             examples = @ExampleObject(
-                                    name = "Ejemplo",
+                                    name = "Comentario",
                                     value = """
-                                    {
-                                      "idConsumer":15,
-                                      "idSpace":44,
-                                      "description":"Muy espacioso.....",
-                                      "score": 5}
-                                    """)
+                                {
+                                  "idComment": null,
+                                  "idConsumer": null,
+                                  "username": null,
+                                  "idSpace": 44,
+                                  "description": "Muy espacioso",
+                                  "score": 5,
+                                  "isActive": null,
+                                  "deactivationReason": null,
+                                  "created_at": null
+                                }
+                                """
+                            )
                     )
             )
             @RequestBody CommentDTO commentDTO,
@@ -120,26 +137,32 @@ public class CommentController {
 
     @PutMapping("/{id}")
     @Operation(
-            summary = "Modifica un comentario.",
-            description = "Modifica un comentario dado el ID."
+            summary = "Modifica un comentario",
+            description = "Actualiza el texto y la puntuación de un comentario existente. El usuario autenticado solo puede modificar comentarios propios; el administrador puede modificar cualquiera."
     )
     public void modifyComment(
             @PathVariable Integer id,
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
-                    description = "Entra los datos obligatorios de la creacion de una nueva Reserva",
+                    description = "Datos actualizados del comentario. La puntuación debe estar entre 0 y 5.",
                     required = true,
                     content = @Content(
-                            schema = @Schema(
-                                    implementation = CommentDTO.class),
+                            schema = @Schema(implementation = CommentDTO.class),
                             examples = @ExampleObject(
-                                    name = "Ejemplo",
+                                    name = "Actualizar comentario",
                                     value = """
-                                    {
-                                      "idConsumer":15,
-                                      "idSpace":44,
-                                      "description":"Muy espacioso.....",
-                                      "score": 5}
-                                    """)
+                                {
+                                  "idComment": 12,
+                                  "idConsumer": null,
+                                  "username": null,
+                                  "idSpace": 44,
+                                  "description": "Muy espacioso y cómodo",
+                                  "score": 5,
+                                  "isActive": null,
+                                  "deactivationReason": null,
+                                  "created_at": null
+                                }
+                                """
+                            )
                     )
             )
             @RequestBody CommentDTO commentDTO,
@@ -167,6 +190,7 @@ public class CommentController {
             summary = "Busca TODOS los Comentarios de un usuario.",
             description = "Devuelve una lista Completa de Comentarios de una ID de usuario."
     )
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<List<CommentDTO>> findAllByConsumerId(@PathVariable Integer id){
         return ResponseEntity.ok(commentService.findAllByConsumerId(id));
     }
@@ -177,6 +201,7 @@ public class CommentController {
             summary = "Busca los comentarios desactivados de un espacio.",
             description = "Devuelve los comentarios desactivados asociados al espacio indicado. Solo accesible para administradores."
     )
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<List<CommentDTO>> findDeactivatedBySpaceId(@PathVariable Integer id){
         return ResponseEntity.ok(commentService.findDeactivatedCommentsBySpaceId(id));
     }
@@ -187,6 +212,7 @@ public class CommentController {
             summary = "Busca los comentarios desactivados de un consumidor.",
             description = "Devuelve los comentarios desactivados asociados al consumidor indicado. Solo accesible para administradores."
     )
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<List<CommentDTO>> findDeactivatedByConsumerId(@PathVariable Integer id){
         return ResponseEntity.ok(commentService.findDeactivatedCommentsByConsumerId(id));
     }
@@ -196,6 +222,7 @@ public class CommentController {
             summary = "Busca TODOS los Comentarios.",
             description = "Devuelve una lista Completa de Comentarios de forma Ascendiente por su puntuación."
     )
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<List<CommentDTO>> findAllByScoreASC(){
         return ResponseEntity.ok(commentService.filterByScoreASC());
     }
@@ -205,11 +232,17 @@ public class CommentController {
             summary = "Busca TODOS los Comentarios.",
             description = "Devuelve una lista Completa de Comentarios de forma Descendiente por su puntuación."
     )
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<List<CommentDTO>> findAllByScoreDesc(){
         return ResponseEntity.ok(commentService.filterByScoreDESC());
     }
 
     @GetMapping("/spaces/{spaceId}/has-comment")
+    @Operation(
+            summary = "Comprueba si el usuario ya comentó un espacio",
+            description = "Responde true si el usuario autenticado tiene un comentario registrado para ese espacio; de lo contrario, responde false."
+    )
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<Boolean> hasCommentOnSpace(
             @PathVariable Integer spaceId
     ) {
@@ -217,6 +250,11 @@ public class CommentController {
     }
 
     @GetMapping("/spaces/{spaceId}/can-comment")
+    @Operation(
+            summary = "Comprueba si el usuario puede comentar un espacio",
+            description = "Responde true si el usuario autenticado tiene una reserva activa CONFIRMED o COMPLETED para ese espacio; de lo contrario, responde false."
+    )
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<Boolean> canCommentOnSpace(
             @PathVariable Integer spaceId
     ) {

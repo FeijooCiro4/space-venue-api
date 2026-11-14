@@ -45,14 +45,14 @@ public record SpaceDTO(
 
         @NotNull(groups = {Create.class, Update.class})
         @Positive(groups = {Create.class, Update.class})
-        @Schema(description = "Precio del alquiler", example = "250000")
+        @Schema(description = "Precio base del alquiler por hora", example = "25000.00")
         BigDecimal basePrice,
 
         LocalDate publicationDate,
 
         @NotNull(groups = {Create.class, Update.class})
         @Positive(groups = {Create.class, Update.class})
-        @Schema(description = "Tiempo entre alquileres")
+        @Schema(description = "Tiempo de receso entre reservas, en minutos", example = "60")
         Integer bufferTime,
 
         @Schema(description = "Actividad. La edición conserva el valor almacenado.")
