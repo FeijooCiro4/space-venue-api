@@ -183,7 +183,7 @@ public class CommentService {
     }
 
     public List<CommentDTO> findAllBySpaceId(Integer spaceId){
-        if(!spaceService.existsById(spaceId)){
+        if(!spaceService.existsByIdIncludingInactive(spaceId)){
             throw new IdNotFoundException("el espacio", spaceId);
         }
         List<Comment> commentList = commentRepository.findAllBySpaceIdSpace(spaceId);
@@ -274,7 +274,7 @@ public class CommentService {
     }
 
     private void validateSpaceExists(Integer spaceId) {
-        if (!spaceService.existsById(spaceId)) {
+        if (!spaceService.existsByIdIncludingInactive(spaceId)) {
             throw new IdNotFoundException(
                     "No se encontró el espacio: ", spaceId
             );
