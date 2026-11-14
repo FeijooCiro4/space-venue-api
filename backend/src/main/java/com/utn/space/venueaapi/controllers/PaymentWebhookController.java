@@ -1,6 +1,16 @@
 package com.utn.space.venueaapi.controllers;
 
+import com.utn.space.venueaapi.model.records.ErrorResponseDTO;
 import com.utn.space.venueaapi.service.IPaymentService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -8,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+@Tag(name = "Pagos", description = "Notificaciones y eventos relacionados con pagos.")
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/payments")
@@ -17,9 +28,42 @@ public class PaymentWebhookController {
     private final IPaymentService paymentService;
 
     @PostMapping("/webhook")
+    @Operation(
+            summary = "Recibe una notificación de pago de Mercado Pago",
+            description = """
+                Acepta topic e id como parámetros de consulta o un JSON con type y data.id.
+                La ruta actualmente requiere autenticación JWT según SecurityConfig.
+                """
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Notificación recibida; respuesta sin cuerpo"),
+            @ApiResponse(responseCode = "401", description = "No autenticado",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
+    })
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<Void> receiveWebhook(
+            @Parameter(description = "Tipo del evento", example = "payment")
             @RequestParam(value = "topic", required = false) String topic,
+
+            @Parameter(description = "ID del pago", example = "123456789")
             @RequestParam(value = "id", required = false) Long id,
+
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = false,
+                    content = @Content(
+                            schema = @Schema(type = "object"),
+                            examples = @ExampleObject(
+                                    value = """
+                                {
+                                  "type": "payment",
+                                  "data": {
+                                    "id": "123456789"
+                                  }
+                                }
+                                """
+                            )
+                    )
+            )
             @RequestBody(required = false) Map<String, Object> data) {
 
         String currentTopic = topic;

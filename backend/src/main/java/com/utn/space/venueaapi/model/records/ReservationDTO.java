@@ -42,10 +42,10 @@ public record ReservationDTO (
     @Schema(description = "Estado de la Reserva", example = "CONFIRMED")
     ReservationStatus status,
 
-    @Schema(description = "Fecha en la que se hizo la reserva", example = "2026-05-20T011:25:31")
+    @Schema(description = "Fecha de creación de la reserva en UTC", example = "2026-05-20T11:25:31")
     LocalDateTime createdAt,
 
-    @Schema(description = "Flag para saber si se hizo un softdelete en la reserva", example = "2026-05-20T011:25:31")
+    @Schema(description = "Indica si la reserva está activa", example = "true")
     Boolean isActive,
 
     // Para la creación (Create) el backend toma el consumidor del JWT, por eso
@@ -55,7 +55,7 @@ public record ReservationDTO (
     Integer idConsumer,
 
     @NotNull(groups = {Create.class, Update.class})
-    @Schema(description = "ID del espacio a reservar", example = "2026-05-20T011:25:31")
+    @Schema(description = "ID del espacio reservado", example = "2")
     Integer idSpace,
 
 
