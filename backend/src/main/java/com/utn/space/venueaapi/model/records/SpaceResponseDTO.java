@@ -6,11 +6,12 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
-/** Contrato de lectura del catálogo: ninguna propiedad contiene entidades JPA. */
+
 public record SpaceResponseDTO(
         Integer idSpace, PublicOwner consumerOwner, PublicLocation location,
         PublicCancellationPolicy cancellationPolicies, String nameSpace, String description,
         BigDecimal basePrice, LocalDate publicationDate, Integer bufferTime,
+        Double rating, Integer commentCount,
         Boolean isActive, Boolean deletedByOwner, ESpaceDeactivationReason deactivationReason,
         List<PublicService> services
 ) {
