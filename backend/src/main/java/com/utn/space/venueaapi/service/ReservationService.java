@@ -2,6 +2,7 @@ package com.utn.space.venueaapi.service;
 
 import com.utn.space.venueaapi.exceptions.*;
 import com.utn.space.venueaapi.model.*;
+import com.utn.space.venueaapi.model.records.ReservationCalendarDTO;
 import com.utn.space.venueaapi.model.records.ReservationDTO;
 import com.utn.space.venueaapi.repository.SpaceServiceItemRepository;
 import com.utn.space.venueaapi.repository.PaymentRepository;
@@ -16,8 +17,10 @@ import org.springframework.transaction.annotation.Isolation;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -73,6 +76,53 @@ public class ReservationService {
 
     public List<Reservation> findAllBySpaceId(Integer idSpace) {
         return reservationRepository.findAllBySpace_IdSpace(idSpace);
+    }
+
+    // Estados que ocupan el horario del espacio. Las TENTATIVE se incluyen porque también
+    // bloquean nuevas reservas; el front las muestra como "Pendiente".
+    private static final List<ReservationStatus> CALENDAR_STATUSES = List.of(
+            ReservationStatus.TENTATIVE,
+            ReservationStatus.CONFIRMED,
+            ReservationStatus.IN_PROGRESS,
+            ReservationStatus.COMPLETED
+    );
+
+    // Rango máximo que se puede pedir de una vez (una grilla mensual son 42 días).
+    private static final long CALENDAR_MAX_DAYS = 62;
+
+    /**
+     * Reservas de un espacio entre dos fechas (ambas inclusive), para el calendario.
+     * Los datos de cada reserva (id, título, cliente) solo se incluyen si quien consulta
+     * es el dueño del espacio, un admin o el propio cliente de esa reserva.
+     */
+    @Transactional(readOnly = true)
+    public List<ReservationCalendarDTO> findCalendarBySpaceId(Integer idSpace, LocalDate from, LocalDate to,
+                                                              String username, boolean isAdmin) {
+        if (from == null || to == null || to.isBefore(from)) {
+            throw new InvalidDateException("El rango de fechas del calendario no es válido.");
+        }
+        if (ChronoUnit.DAYS.between(from, to) > CALENDAR_MAX_DAYS) {
+            throw new InvalidDateException("El rango del calendario no puede superar los " + CALENDAR_MAX_DAYS + " días.");
+        }
+        Space space = spaceService.findById(idSpace);
+        boolean canSeeAll = isAdmin || space.getConsumerOwner().getCredentials().getUsername().equals(username);
+
+        return reservationRepository.findCalendarReservations(
+                        idSpace, from.atStartOfDay(), to.plusDays(1).atStartOfDay(), CALENDAR_STATUSES)
+                .stream()
+                .map(r -> {
+                    boolean showDetails = canSeeAll
+                            || r.getConsumer().getCredentials().getUsername().equals(username);
+                    return new ReservationCalendarDTO(
+                            showDetails ? r.getId() : null,
+                            r.getFromDate(),
+                            r.getUntilDate(),
+                            r.getStatus(),
+                            showDetails ? r.getTitle() : null,
+                            showDetails ? r.getConsumer().getFirstname() + " " + r.getConsumer().getLastname() : null
+                    );
+                })
+                .toList();
     }
 
     private boolean isSpaceAvailableBetweenDates(LocalDateTime from, LocalDateTime until,

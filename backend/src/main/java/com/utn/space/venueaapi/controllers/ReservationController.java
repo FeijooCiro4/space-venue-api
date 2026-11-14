@@ -6,6 +6,7 @@ import com.utn.space.venueaapi.model.Reservation;
 import com.utn.space.venueaapi.model.flags.Create;
 import com.utn.space.venueaapi.model.flags.Update;
 import com.utn.space.venueaapi.model.records.ErrorResponseDTO;
+import com.utn.space.venueaapi.model.records.ReservationCalendarDTO;
 import com.utn.space.venueaapi.model.records.ReservationDTO;
 import com.utn.space.venueaapi.security.JwtUtil;
 import com.utn.space.venueaapi.service.ConsumerService;
@@ -24,11 +25,14 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
+import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -180,6 +184,25 @@ public class ReservationController {
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(reservationService.findAllBySpaceId(idSpace));
+    }
+
+    @GetMapping("/space/{idSpace}/calendar")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(
+            summary = "Calendario de reservas de un espacio.",
+            description = "Devuelve, en orden cronológico, las reservas pendientes o confirmadas de un espacio entre dos fechas (inclusive, máximo 62 días). "
+                    + "Cualquier usuario logueado ve los horarios ocupados y su estado; el id, título y cliente solo se incluyen para el dueño del espacio, el admin o el cliente de esa reserva."
+    )
+    public ResponseEntity<List<ReservationCalendarDTO>> findCalendarBySpaceId(
+            @Parameter(description = "ID del Espacio") @PathVariable Integer idSpace,
+            @Parameter(description = "Primer día del rango (yyyy-MM-dd)") @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @Parameter(description = "Último día del rango, inclusive (yyyy-MM-dd)") @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            Authentication authentication) {
+        boolean isAdmin = authentication.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(reservationService.findCalendarBySpaceId(idSpace, from, to, authentication.getName(), isAdmin));
     }
 
     @PostMapping
