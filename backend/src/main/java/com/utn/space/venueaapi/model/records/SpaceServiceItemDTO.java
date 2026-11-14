@@ -5,7 +5,7 @@ import com.utn.space.venueaapi.model.flags.Update;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 
 import java.math.BigDecimal;
 
@@ -20,7 +20,7 @@ public record SpaceServiceItemDTO(
         String description,
 
         @NotNull(groups = {Create.class, Update.class})
-        @Positive(groups = {Create.class, Update.class})
+        @PositiveOrZero(groups = {Create.class, Update.class})
         @Schema(description = "Precio del Servicio", example = "75000.00")
         BigDecimal price,
 
