@@ -12,11 +12,19 @@ public record ImageUploadUrlRequestDTO(
         Integer idSpace,
 
         @NotBlank
-        @Schema(description = "Tipo del archivo", example = "image/jpeg")
+        @Schema(
+                description = "MIME type admitido: image/jpeg, image/png o image/webp",
+                example = "image/jpeg",
+                allowableValues = {"image/jpeg", "image/png", "image/webp"}
+        )
         String contentType,
 
         @NotNull
         @Positive
-        @Schema(description = "Tamaño del archivo en bytes", example = "245760")
+        @Schema(
+                description = "Tamaño del archivo en bytes. Máximo: 5 MiB (5.242.880 bytes)",
+                example = "245760",
+                maximum = "5242880"
+        )
         Long size) {
 }

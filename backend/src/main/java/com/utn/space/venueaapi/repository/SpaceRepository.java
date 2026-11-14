@@ -4,9 +4,11 @@ import com.utn.space.venueaapi.model.Space;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -57,6 +59,16 @@ public interface SpaceRepository extends JpaRepository<Space, Integer> {
 
     @Query("SELECT s FROM Space s WHERE s.isActive")
     List<Space>findAllWithOutInactives();
+
+
+    @Modifying(clearAutomatically = true)
+    @Transactional
+    @Query("UPDATE Space u SET u.rating = :rating, u.commentCount = :commentCount WHERE u.idSpace = :id")
+    void updateRatingAndCount(
+            @Param("id") Integer spaceId,
+            @Param("rating") double rating,
+            @Param("commentCount") Integer commentCount
+    );
 
     boolean existsByIdSpaceAndIsActiveTrue(Integer idSpace);
 }

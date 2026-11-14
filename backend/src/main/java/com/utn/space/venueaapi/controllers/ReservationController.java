@@ -17,6 +17,9 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,7 +60,33 @@ public class ReservationController {
 
 ///---------------------------Metodos------------------------------------------------------------------------------------
     @PostMapping("/{id}/checkout")
+    @Operation(
+            summary = "Genera el enlace de pago de una reserva",
+            description = """
+                La reserva debe pertenecer al usuario autenticado y estar en estado CONFIRMED.
+                Devuelve la URL de inicio de pago de Mercado Pago.
+                """
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Preferencia de pago creada",
+                    content = @Content(
+                            schema = @Schema(
+                                    type = "object",
+                                    example = "{\"initPoint\":\"https://www.mercadopago.com/checkout/...\"}"
+                            )
+                    )
+            ),
+            @ApiResponse(responseCode = "400", description = "La reserva no está confirmada",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(responseCode = "502", description = "Error al comunicarse con Mercado Pago",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(responseCode = "500", description = "Error inesperado",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
+    })
     @PreAuthorize("hasAnyRole('CLIENT', 'OFFERER') and @securityUtils.isReservationOwner(#id, authentication.name)")
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<?> createPaymentPreference(@Parameter(description = "ID de la Reservación") @PathVariable Integer id) {
         try {
             Reservation reservation = reservationService.findById(id);
@@ -91,6 +120,7 @@ public class ReservationController {
             summary = "Busca TODAS las Reservas.",
             description = "Devuelve una lista Completa de Reservas."
     )
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<List<Reservation>> findAll (){
         return ResponseEntity
                 .status(HttpStatus.OK)
@@ -99,9 +129,20 @@ public class ReservationController {
 
     @GetMapping("/me")
     @Operation(
-            summary = "Busca las reservas del usuario actual en sesión.",
-            description = "Devuelve la lista completa de alquileres que le pertenecen al cliente autenticado."
+            summary = "Lista las reservas del usuario autenticado",
+            description = "Devuelve las reservas asociadas al consumidor identificado por el JWT. Disponible para CLIENT, OFFERER y ADMIN."
     )
+    @ApiResponses({
+            @ApiResponse(responseCode = "401", description = "No autenticado",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(responseCode = "403", description = "Sin permisos para esta operación",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(responseCode = "404", description = "No se encontró la reserva",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(responseCode = "400", description = "La transición no está permitida para el estado actual",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
+    })
+    @SecurityRequirement(name = "bearerAuth")
     @PreAuthorize("hasAnyRole('CLIENT', 'OFFERER', 'ADMIN')")
     public ResponseEntity<List<Reservation>> findAllForCurrentConsumer() {
         return ResponseEntity
@@ -111,10 +152,21 @@ public class ReservationController {
 
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or @securityUtils.canReadReservation(#id, authentication.name)")
+    @SecurityRequirement(name = "bearerAuth")
     @Operation(
             summary = "Busca una Reserva.",
             description = "Busca la ID de una reserva y la devuelve."
     )
+    @ApiResponses({
+            @ApiResponse(responseCode = "401", description = "No autenticado",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(responseCode = "403", description = "Sin permisos para esta operación",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(responseCode = "404", description = "No se encontró la reserva",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(responseCode = "400", description = "La transición no está permitida para el estado actual",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
+    })
     public ResponseEntity<Reservation> findById ( @Parameter(description = "ID de la Reservación") @PathVariable Integer id){
         return ResponseEntity
                 .status(HttpStatus.OK)
@@ -123,6 +175,7 @@ public class ReservationController {
 
     @GetMapping("/space/{idSpace}")
     @PreAuthorize("hasRole('ADMIN') or @securityUtils.isSpaceOwner(#idSpace, authentication.name)")
+    @SecurityRequirement(name = "bearerAuth")
     @Operation(
             summary = "Busca reservas de un espacio.",
             description = "En base al ID de un espacio, devuelve todas las reservas asociadas a ese espacio (siempre y cuando el usuario actual en sesión sea el dueño de ese espacio)."
@@ -154,32 +207,51 @@ public class ReservationController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('CLIENT', 'OFFERER', 'ADMIN')")
+    @SecurityRequirement(name = "bearerAuth")
     @Operation(
-            summary = "Crea una Reserva.",
-            description = "El cliente entra un ReservaDTO por el body."
+            summary = "Crea una reserva",
+            description = """
+                El consumidor titular se obtiene del JWT. El servidor asigna el estado inicial
+                TENTATIVE, calcula el precio y activa la reserva; esos valores no se toman del body.
+                El espacio debe estar activo, las fechas deben ser futuras y estar disponibles,
+                y no se puede reservar el espacio propio.
+                """
     )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "Reserva creada",
+                    content = @Content(schema = @Schema(implementation = Reservation.class))
+            ),
+            @ApiResponse(responseCode = "400", description = "Datos inválidos o reserva no disponible",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(responseCode = "401", description = "Falta el Bearer token o es inválido")
+    })
     public ResponseEntity<Reservation> createReservation(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
-                    description = "Entra los datos obligatorios de la creacion de una nueva Reserva",
+                    description = "Datos del evento, espacio y servicios opcionales. No incluir idConsumer para determinar el titular.",
                     required = true,
                     content = @Content(
-                            schema = @Schema(
-                                    implementation = ReservationDTO.class),
-                            examples = @ExampleObject (
-                                    name = "Ejemplo",
+                            schema = @Schema(implementation = ReservationDTO.class),
+                            examples = @ExampleObject(
+                                    name = "Nueva reserva",
                                     value = """
-                                    {
-                                      "id": 4,
-                                      "title":"Cumpleaños",
-                                      "description":"Cumpleaños de Cecilia",
-                                      "fromDate":"2026-09-15T21:00:00",
-                                      "untilDate":"2026-09-16T05:00:00",
-                                      "status":"CONFIRMED",
-                                      "createdAt":"2026-05-20T011:25:31"
-                                      "id_consumer":1,
-                                      "id_space":2,
-                                      "idServicesSelec":[1, 2, 5, 9]}
-                                    """)
+                                {
+                                  "id": null,
+                                  "title": "Cumpleaños",
+                                  "description": "Cumpleaños de Cecilia",
+                                  "fromDate": "2027-09-15T21:00:00",
+                                  "untilDate": "2027-09-16T05:00:00",
+                                  "finalPrice": null,
+                                  "status": null,
+                                  "createdAt": null,
+                                  "isActive": null,
+                                  "idConsumer": null,
+                                  "idSpace": 2,
+                                  "idServicesSelec": [1, 2]
+                                }
+                                """
+                            )
                     )
             )
             @Validated(Create.class)
@@ -207,29 +279,37 @@ public class ReservationController {
     }
 
     @PutMapping
+    @SecurityRequirement(name = "bearerAuth")
     @PreAuthorize("hasRole('ADMIN') or (@securityUtils.isConsumerOfReservation(#dto.id(), authentication.name) and @securityUtils.isCurrentConsumer(#dto.idConsumer(), authentication.name))")
+    @Operation(
+            summary = "Modifica una reserva",
+            description = """
+                Modifica los datos de una reserva existente. Solo se puede editar si su estado
+                es TENTATIVE y todavía no tiene un pago registrado. El idConsumer debe coincidir
+                con el titular actual; el precio final se recalcula en el servidor.
+                """
+    )
     public ResponseEntity<Reservation> modifyReservation(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
-                    description = "Entra los datos obligatorios de la creacion de una nueva Reserva",
+                    description = "Datos actualizados de la reserva.",
                     required = true,
                     content = @Content(
-                            schema = @Schema(
-                                    implementation = ReservationDTO.class),
-                            examples = @ExampleObject (
-                                    name = "Ejemplo",
+                            schema = @Schema(implementation = ReservationDTO.class),
+                            examples = @ExampleObject(
+                                    name = "Actualizar reserva",
                                     value = """
-                                    {
-                                      "id": 4,
-                                      "title":"Cumpleaños",
-                                      "description":"Cumpleaños de Cecilia",
-                                      "fromDate":"2026-09-15T21:00:00",
-                                      "untilDate":"2026-09-16T05:00:00",
-                                      "status":"CONFIRMED",
-                                      "createdAt":"2026-05-20T011:25:31"
-                                      "id_consumer":1,
-                                      "id_space":2,
-                                      "idServicesSelec":[1, 2, 5, 9]}
-                                    """)
+                                {
+                                  "id": 4,
+                                  "title": "Cumpleaños actualizado",
+                                  "description": "Evento familiar",
+                                  "fromDate": "2027-09-15T21:00:00",
+                                  "untilDate": "2027-09-16T05:00:00",
+                                  "idConsumer": 1,
+                                  "idSpace": 2,
+                                  "idServicesSelec": [1, 2]
+                                }
+                                """
+                            )
                     )
             )
             @Validated(Update.class)@RequestBody ReservationDTO dto){
@@ -239,10 +319,11 @@ public class ReservationController {
     }
 
     @PutMapping("/confirm/{id}")
+    @SecurityRequirement(name = "bearerAuth")
     @PreAuthorize("hasRole('ADMIN') or @securityUtils.isSpaceOwnerOfReservation(#id, authentication.name)")
     @Operation(
-            summary = "El duenio Confirma una Reserva.",
-            description = "Busca la ID de una reserva y le cambia su Estado a CONFIRM."
+            summary = "El dueño confirma una reserva",
+            description = "Cambia el estado de TENTATIVE a CONFIRMED. Solo se puede confirmar una reserva activa pendiente."
     )
     public ResponseEntity<Reservation> confirmReservation(@Parameter(description = "ID de la Reservación") @PathVariable Integer id){
         return ResponseEntity
@@ -254,9 +335,10 @@ public class ReservationController {
     @PutMapping("/reject/{id}")
     @PreAuthorize("hasRole('ADMIN') or @securityUtils.isSpaceOwnerOfReservation(#id, authentication.name)")
     @Operation(
-            summary = "El duenio rechaza una Reserva.",
-            description = "Busca la ID de una reserva y le cambia su Estado a REJECTED."
+            summary = "El dueño rechaza una reserva",
+            description = "Cambia el estado de una reserva activa de TENTATIVE a REJECTED."
     )
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<Reservation> rejectReservation(@Parameter(description = "ID de la Reservación") @PathVariable Integer id){
         return ResponseEntity.ok(reservationService.rejectReservation(id));
     }
@@ -264,9 +346,10 @@ public class ReservationController {
     @PutMapping("/complete/{id}")
     @PreAuthorize("hasRole('ADMIN') or @securityUtils.isSpaceOwnerOfReservation(#id, authentication.name)")
     @Operation(
-            summary = "Completa una Reserva.",
-            description = "Busca la ID de una reserva y le cambia su Estado a COMPLETED."
+            summary = "Completa una reserva",
+            description = "Cambia el estado de una reserva activa de CONFIRMED a COMPLETED."
     )
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<Reservation> completeReservation(@Parameter(description = "ID de la Reservación") @PathVariable Integer id){
         return ResponseEntity
                 .status(HttpStatus.OK)
@@ -276,9 +359,10 @@ public class ReservationController {
     @PutMapping("/cancel/{id}")
     @PreAuthorize("hasRole('ADMIN') or @securityUtils.canReadReservation(#id, authentication.name)")
     @Operation(
-            summary = "Cancela una Reserva.",
-            description = "Busca la ID de una reserva y le cambia su Estado a CANCELLED."
+            summary = "Cancela una reserva",
+            description = "Cambia el estado de TENTATIVE o CONFIRMED a CANCELLED."
     )
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<Reservation> cancelReservation(@Parameter(description = "ID de la Reservación") @PathVariable Integer id){
         return ResponseEntity
                 .status(HttpStatus.OK)
@@ -291,6 +375,7 @@ public class ReservationController {
             summary = "Hace un borrado suave de una Reserva.",
             description = "Busca una Reserva por su ID y la marca como borrada(SoftDelete)."
     )
+    @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity <Reservation> softDelete (@Parameter(description = "ID de la Reservación") @PathVariable Integer id){
         return ResponseEntity
                 .status(HttpStatus.OK)

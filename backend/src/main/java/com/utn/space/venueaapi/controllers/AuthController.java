@@ -3,6 +3,7 @@ package com.utn.space.venueaapi.controllers;
 import com.mercadopago.net.HttpStatus;
 import com.utn.space.venueaapi.model.Consumer;
 import com.utn.space.venueaapi.model.records.ErrorResponseDTO;
+import com.utn.space.venueaapi.model.records.LoginRequestDTO;
 import com.utn.space.venueaapi.model.records.LoginResponseDTO;
 import com.utn.space.venueaapi.model.records.MessageResponseDTO;
 import com.utn.space.venueaapi.security.JwtUtil;
@@ -10,6 +11,14 @@ import com.utn.space.venueaapi.service.ConsumerService;
 import com.utn.space.venueaapi.service.NotificationService;
 import com.utn.space.venueaapi.service.RegistrationService;
 import com.utn.space.venueaapi.service.TokenBlacklistService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
@@ -27,6 +36,7 @@ import org.springframework.web.bind.annotation.*;
 @AllArgsConstructor
 @RestController
 @RequestMapping("/api/auth")
+@Tag(name = "Autenticación", description = "Operaciones de autenticación.")
 public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final JwtUtil jwtUtil;
@@ -38,6 +48,23 @@ public class AuthController {
     private TokenBlacklistService blacklistService;
 
     @PostMapping("/logout")//La respuesta esta en ? porque se pueden devolver 2 DTO distintos
+    @Operation(
+            summary = "Cierra la sesión",
+            description = "Invalida el JWT recibido en Authorization. Si no se envía un Bearer token, responde 400.",
+            parameters = @Parameter(
+                    name = "Authorization",
+                    in = ParameterIn.HEADER,
+                    required = false,
+                    description = "Token JWT con el formato Bearer <token>",
+                    example = "Bearer eyJ..."
+            )
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Sesión cerrada",
+                    content = @Content(schema = @Schema(implementation = MessageResponseDTO.class))),
+            @ApiResponse(responseCode = "400", description = "Token no provisto o inválido",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
+    })
     public ResponseEntity<?> logout(HttpServletRequest request) {
         String bearerToken = request.getHeader("Authorization");
         if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
@@ -51,6 +78,20 @@ public class AuthController {
     }
 
     @PostMapping("/login")
+    @Operation(
+            summary = "Inicia sesión",
+            description = "Autentica al usuario y devuelve un JWT, su tipo, rol e identificador de consumidor."
+    )
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            required = true,
+            content = @Content(schema = @Schema(implementation = LoginRequestDTO.class))
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Inicio de sesión exitoso",
+                    content = @Content(schema = @Schema(implementation = LoginResponseDTO.class))),
+            @ApiResponse(responseCode = "401", description = "Usuario o contraseña incorrectos",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
+    })
     public ResponseEntity<?> login(@RequestBody java.util.Map<String, String> loginRequest) {
         try {
             String username = loginRequest.get("username");
@@ -80,6 +121,18 @@ public class AuthController {
     // Cambio el @RequestBody para que reciba record RegistroDTO
     //Se usa el @valid que faltaba en los registros para que se validen las restricciones de los campos del DTO.
     @PostMapping("/register")
+    @Operation(
+            summary = "Registra un usuario y su perfil",
+            description = "Registra nombre, apellido, email, teléfono, usuario y contraseña."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Usuario y perfil registrados",
+                    content = @Content(schema = @Schema(implementation = MessageResponseDTO.class))),
+            @ApiResponse(responseCode = "400", description = "Datos inválidos",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(responseCode = "409", description = "Conflicto con un dato ya registrado",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
+    })
     public ResponseEntity<MessageResponseDTO> register(@Valid @RequestBody com.utn.space.venueaapi.model.records.RegistroDTO dto) {
 
         registrationService.register(dto);
