@@ -2,11 +2,7 @@ package com.utn.space.venueaapi.model;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.utn.space.venueaapi.model.flags.Create;
-import com.utn.space.venueaapi.model.flags.Update;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -40,7 +36,6 @@ public class Space {
     @JoinColumn(name = "idCancellationPolicies")
     private CancellationPolicies cancellationPolicies;
 
-
     @Column(name = "name_space")
     private String nameSpace;
 
@@ -54,6 +49,11 @@ public class Space {
 
     @Column(name = "buffer_time")
     private Integer bufferTime;
+
+    private double rating;
+
+    @Column(name = "comment_count")
+    private Integer commentCount;
 
     private Boolean isActive;
 
