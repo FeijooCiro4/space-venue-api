@@ -3,9 +3,9 @@ package com.utn.space.venueaapi.service;
 import com.utn.space.venueaapi.exceptions.IdNotFoundException;
 import com.utn.space.venueaapi.exceptions.InvalidDataException;
 import com.utn.space.venueaapi.model.*;
-import com.utn.space.venueaapi.model.records.CommentDTO;
 import com.utn.space.venueaapi.model.records.SpaceDTO;
 import com.utn.space.venueaapi.model.records.SpaceFilterDTO;
+import com.utn.space.venueaapi.repository.CommentRepository;
 import com.utn.space.venueaapi.repository.SpaceRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import jakarta.persistence.EntityManager;
@@ -33,7 +33,7 @@ public class SpaceService {
     @Autowired
     CancellationPoliciesService cancellationPoliciesService;
     @Autowired
-    CommentService commentService;
+    CommentRepository commentRepository;
 
 
     public List<Space> findAll(){
@@ -388,12 +388,12 @@ public class SpaceService {
     }
 
     public void calcularRatingYCount(Space space){
-        List<CommentDTO> lista = commentService.findAllBySpaceId(space.getIdSpace());
+        List<Comment> lista = commentRepository.findAllBySpaceIdSpace(space.getIdSpace());
         if(!lista.isEmpty()){
             space.setCommentCount(lista.size());
             int contador = 0;
-            for(CommentDTO commentDTO : lista){
-                contador +=  commentDTO.score();
+            for(Comment comment : lista){
+                contador += comment.getScore();
             }
             double promedio = (double) contador / lista.size();
             space.setRating(promedio);
