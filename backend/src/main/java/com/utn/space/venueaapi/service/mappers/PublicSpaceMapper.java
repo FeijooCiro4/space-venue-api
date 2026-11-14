@@ -21,7 +21,9 @@ public final class PublicSpaceMapper {
                 policy == null ? null : new SpaceResponseDTO.PublicCancellationPolicy(policy.getIdCancellationPolicies(),
                         policy.getType() == null ? null : policy.getType().name(), policy.getDaysAnticipation(), policy.getRefundPercentage()),
                 space.getNameSpace(), space.getDescription(), space.getBasePrice(), space.getPublicationDate(),
-                space.getBufferTime(), space.getIsActive(), Boolean.TRUE.equals(space.getDeletedByOwner()),
+                space.getBufferTime(),
+                space.getRating(), space.getCommentCount() == null ? 0 : space.getCommentCount(),
+                space.getIsActive(), Boolean.TRUE.equals(space.getDeletedByOwner()),
                 deactivationReason(space),
                 space.getServices() == null ? List.of() : space.getServices().stream()
                         .map(item -> new SpaceResponseDTO.PublicService(item.getId(), item.getDescription(), item.getPrice(), item.getIsActive()))
