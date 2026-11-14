@@ -30,6 +30,22 @@ public interface ReservationRepository extends JpaRepository<Reservation,Integer
                                          @Param("untilDate") LocalDateTime untilDate);
 
     List<Reservation> findAllByConsumer_IdConsumer(Integer idConsumer);
+
+    // Reservas activas de un espacio que se solapan con el rango [from, to), en orden cronológico.
+    // Usado por el calendario de disponibilidad.
+    @Query("""
+    SELECT r FROM Reservation r
+    WHERE r.space.idSpace = :idSpace
+      AND r.isActive = true
+      AND r.status IN :statuses
+      AND r.fromDate < :to
+      AND r.untilDate > :from
+    ORDER BY r.fromDate
+    """)
+    List<Reservation> findCalendarReservations(@Param("idSpace") Integer idSpace,
+                                               @Param("from") LocalDateTime from,
+                                               @Param("to") LocalDateTime to,
+                                               @Param("statuses") List<ReservationStatus> statuses);
     List<Reservation> findAllBySpace_IdSpace(Integer idSpace);
 
     // Cuenta las reservas completadas o confirmadas de un usuario en un espacio específico
