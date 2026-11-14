@@ -3,6 +3,7 @@ package com.utn.space.venueaapi.controllers;
 import com.mercadopago.net.HttpStatus;
 import com.utn.space.venueaapi.model.Consumer;
 import com.utn.space.venueaapi.model.records.ErrorResponseDTO;
+import com.utn.space.venueaapi.model.records.LoginRequestDTO;
 import com.utn.space.venueaapi.model.records.LoginResponseDTO;
 import com.utn.space.venueaapi.model.records.MessageResponseDTO;
 import com.utn.space.venueaapi.security.JwtUtil;
@@ -10,6 +11,11 @@ import com.utn.space.venueaapi.service.ConsumerService;
 import com.utn.space.venueaapi.service.NotificationService;
 import com.utn.space.venueaapi.service.RegistrationService;
 import com.utn.space.venueaapi.service.TokenBlacklistService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
@@ -51,6 +57,20 @@ public class AuthController {
     }
 
     @PostMapping("/login")
+    @Operation(
+            summary = "Inicia sesión",
+            description = "Autentica al usuario y devuelve un JWT, su tipo, rol e identificador de consumidor."
+    )
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            required = true,
+            content = @Content(schema = @Schema(implementation = LoginRequestDTO.class))
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Inicio de sesión exitoso",
+                    content = @Content(schema = @Schema(implementation = LoginResponseDTO.class))),
+            @ApiResponse(responseCode = "401", description = "Usuario o contraseña incorrectos",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
+    })
     public ResponseEntity<?> login(@RequestBody java.util.Map<String, String> loginRequest) {
         try {
             String username = loginRequest.get("username");
@@ -80,6 +100,18 @@ public class AuthController {
     // Cambio el @RequestBody para que reciba record RegistroDTO
     //Se usa el @valid que faltaba en los registros para que se validen las restricciones de los campos del DTO.
     @PostMapping("/register")
+    @Operation(
+            summary = "Registra un usuario y su perfil",
+            description = "Registra nombre, apellido, email, teléfono, usuario y contraseña."
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Usuario y perfil registrados",
+                    content = @Content(schema = @Schema(implementation = MessageResponseDTO.class))),
+            @ApiResponse(responseCode = "400", description = "Datos inválidos",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class))),
+            @ApiResponse(responseCode = "409", description = "Conflicto con un dato ya registrado",
+                    content = @Content(schema = @Schema(implementation = ErrorResponseDTO.class)))
+    })
     public ResponseEntity<MessageResponseDTO> register(@Valid @RequestBody com.utn.space.venueaapi.model.records.RegistroDTO dto) {
 
         registrationService.register(dto);
