@@ -41,12 +41,12 @@ public class NotificationController {
 
 ///------------------------------------------------Metodos--------------------------------------------------------------------
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'CLIENT', 'OFFERER')")
+    @PreAuthorize("hasRole('ADMIN')")
     @Operation(
             summary = "Crea una notificación",
             description = """
                 Crea una notificación para el idConsumer enviado en el body.
-                La operación está permitida para ADMIN, CLIENT y OFFERER.
+                Solo ADMIN puede usarla, para evitar que cualquier usuario mande mensajes arbitrarios a otros.
                 """
     )
     @SecurityRequirement(name = "bearerAuth")
@@ -75,7 +75,7 @@ public class NotificationController {
                     )
             ),
             @ApiResponse(responseCode = "400", description = "Datos inválidos"),
-            @ApiResponse(responseCode = "403", description = "Se requiere rol CLIENT, OFFERER o ADMIN"),
+            @ApiResponse(responseCode = "403", description = "Se requiere rol ADMIN"),
             @ApiResponse(responseCode = "404", description = "No se encontró el usuario destinatario")
     })
     public ResponseEntity<Map<String, Object>> createNotification(@Valid @RequestBody NotificationCreateDTO request) {
