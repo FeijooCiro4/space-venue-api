@@ -1,6 +1,7 @@
 package com.utn.space.venueaapi.repository;
 
 import com.utn.space.venueaapi.model.Consumer;
+import com.utn.space.venueaapi.model.ERoles;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -25,6 +26,10 @@ public interface ConsumerRepository extends JpaRepository<Consumer,Integer> {
                                    @Param("email") String email,
                                    @Param("phone") String phone,
                                    @Param("username") String username);
+
+    //Usuarios activos con un rol dado (se usa para avisar a todos los admins cuando hay solicitudes de oferente)
+    @Query("SELECT c FROM Consumer c WHERE c.credentials.rol = :rol AND c.credentials.isActive = true")
+    List<Consumer> findAllActiveByRol(@Param("rol") ERoles rol);
 
     boolean existsByEmail(String email);
     boolean existsByPhone(String phone);
