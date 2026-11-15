@@ -1,8 +1,10 @@
 package com.utn.space.venueaapi.service;
 
 import com.utn.space.venueaapi.exceptions.InvalidDataException;
+import com.utn.space.venueaapi.exceptions.InvalidReservationException;
 import com.utn.space.venueaapi.exceptions.NameNotFoundException;
 import com.utn.space.venueaapi.model.*;
+import com.utn.space.venueaapi.model.records.AccountImpactDTO;
 import com.utn.space.venueaapi.repository.ConsumerRepository;
 import com.utn.space.venueaapi.repository.ReservationRepository;
 import com.utn.space.venueaapi.repository.SpaceRepository;
@@ -10,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 
 // Bajas de cuentas y cambio de rol a cliente, con el cierre de las reservas que dependen de esa cuenta.
@@ -94,6 +97,55 @@ public class AccountClosureService {
         }
         credential.setRol(rol);
         consumerRepository.save(consumer);
+    }
+
+    public enum ImpactAction { DESACTIVAR, CAMBIAR_A_CLIENTE }
+
+    // Calcula qué pasaría con deactivateByAdmin o con changeRol a CLIENT, sin cambiar nada.
+    // Usa las mismas verificaciones que esas operaciones, así el resumen coincide con lo que después se hace
+    @Transactional(readOnly = true)
+    public AccountImpactDTO impact(Integer id, ImpactAction accion, String requesterUsername) {
+        Consumer consumer = consumerRepository.findById(id)
+                .orElseThrow(() -> new NameNotFoundException("No se encontró el usuario."));
+        Credential credential = requireCredential(consumer);
+        boolean desactivar = accion == ImpactAction.DESACTIVAR;
+
+        String motivoBloqueo = null;
+        try {
+            if (desactivar) {
+                if (credential.getUsername().equals(requesterUsername)) {
+                    throw new InvalidDataException("No podés desactivar tu propia cuenta.");
+                }
+                requireNothingInProgress(consumer);
+            } else {
+                if (credential.getRol() == ERoles.ROLE_ADMIN) {
+                    throw new InvalidDataException("No se puede cambiar el rol de un administrador.");
+                }
+                for (Space space : spaceRepository.findAllByConsumerOwnerIdConsumer(id)) {
+                    reservationClosureService.checkCanClose(space);
+                }
+            }
+        } catch (InvalidDataException | InvalidReservationException e) {
+            motivoBloqueo = e.getMessage();
+        }
+
+        // Al pasar a cliente solo cambia algo si hoy es oferente
+        boolean afectaEspacios = desactivar || credential.getRol() == ERoles.ROLE_OFFERER;
+        List<Space> espacios = afectaEspacios ? spaceRepository.findAllByConsumerOwnerIdConsumer(id) : List.of();
+
+        List<Reservation> aCancelar = new ArrayList<>();
+        for (Space space : espacios) {
+            reservationRepository.findAllBySpace_IdSpace(space.getIdSpace()).stream()
+                    .filter(r -> Boolean.TRUE.equals(r.getIsActive()))
+                    .filter(r -> CANCELABLES.contains(r.getStatus()))
+                    .forEach(aCancelar::add);
+        }
+        if (desactivar) aCancelar.addAll(futureClientReservations(consumer));
+
+        // Solo se cuentan los espacios que hoy se ven: los eliminados o desactivados ya estaban ocultos
+        int ocultos = (int) espacios.stream().filter(Space::isBookable).count();
+        int pagadas = (int) aCancelar.stream().filter(reservationClosureService::isPaid).count();
+        return new AccountImpactDTO(ocultos, aCancelar.size(), pagadas, motivoBloqueo != null, motivoBloqueo);
     }
 
     private void closeOwnedSpaces(Consumer owner, ECancellationReason reason, String motivo) {

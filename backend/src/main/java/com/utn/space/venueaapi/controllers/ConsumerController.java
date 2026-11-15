@@ -4,6 +4,7 @@ import com.utn.space.venueaapi.exceptions.InvalidDataException;
 import com.utn.space.venueaapi.model.Consumer;
 import com.utn.space.venueaapi.model.Credential;
 import com.utn.space.venueaapi.model.ERoles;
+import com.utn.space.venueaapi.model.records.AccountImpactDTO;
 import com.utn.space.venueaapi.model.records.ConsumerFilterDTO;
 
 import com.utn.space.venueaapi.service.AccountClosureService;
@@ -116,6 +117,19 @@ public class ConsumerController {
             accountClosureService.deactivateByAdmin(id, principal.getName());
         }
         return ResponseEntity.ok(new MessageResponseDTO(active ? "Usuario activado." : "Usuario desactivado."));
+    }
+
+    @GetMapping("/usuarios/{id}/impacto")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(
+            summary = "Calcula el impacto de dar de baja un usuario o pasarlo a cliente.",
+            description = "No cambia nada. Devuelve cuántos espacios quedarían ocultos, cuántas reservas futuras se cancelarían y cuántas de ellas están pagadas. Si la operación se va a rechazar (por ej. una reserva en curso), bloqueado es true y motivoBloqueo dice por qué."
+    )
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<AccountImpactDTO> impact(@PathVariable Integer id,
+                                                   @RequestParam AccountClosureService.ImpactAction accion,
+                                                   Principal principal) {
+        return ResponseEntity.ok(accountClosureService.impact(id, accion, principal.getName()));
     }
 
     @PutMapping("/usuarios/{id}/rol")
