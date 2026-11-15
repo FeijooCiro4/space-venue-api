@@ -150,8 +150,8 @@ public class ReservationService {
         if (from == null || until == null || !until.isAfter(from) || from.isBefore(LocalDateTime.now())) {
             throw new InvalidDateException("La reserva debe comenzar en el futuro y tener una duración positiva.");
         }
-        if (!Boolean.TRUE.equals(space.getIsActive())) {
-            throw new InvalidReservationException("El espacio no está activo.");
+        if (!space.isBookable()) {
+            throw new InvalidReservationException("El espacio no está disponible para reservas.");
         }
         if (space.getConsumerOwner().getIdConsumer().equals(consumer.getIdConsumer())) {
             throw new SelfReservationException("No puede reservar su propio espacio.");
@@ -272,14 +272,64 @@ public class ReservationService {
         return reservationRepository.save(reservation);
     }
 
+    // Cancelación pedida por un usuario: el motivo sale de quién la pide.
+    // Si es el cliente de la reserva cuenta como CLIENT aunque también sea admin
     @Transactional(isolation = Isolation.READ_COMMITTED)
-    public Reservation cancelReservation(Integer id) {
+    public Reservation cancelReservation(Integer id, String username, boolean isAdmin) {
         Reservation reservation = findByIdForUpdate(id);
+        ECancellationReason reason;
+        if (reservation.getConsumer().getCredentials().getUsername().equals(username)) {
+            reason = ECancellationReason.CLIENT;
+        } else if (reservation.getSpace().getConsumerOwner().getCredentials().getUsername().equals(username)) {
+            reason = ECancellationReason.OWNER;
+        } else if (isAdmin) {
+            reason = ECancellationReason.PLATFORM;
+        } else {
+            throw new InvalidReservationException("No podés cancelar esta reserva.");
+        }
+        return cancelReservation(reservation, reason);
+    }
+
+    // Cancelación automática (ej. el scheduler con EXPIRED)
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public Reservation cancelReservation(Integer id, ECancellationReason reason) {
+        return cancelReservation(findByIdForUpdate(id), reason);
+    }
+
+    private Reservation cancelReservation(Reservation reservation, ECancellationReason reason) {
         requireState(reservation, ReservationStatus.TENTATIVE, ReservationStatus.CONFIRMED);
         reservation.setStatus(ReservationStatus.CANCELLED);
-        notificationService.createNotification(reservation.getSpace().getConsumerOwner(),
-                "La reserva de " + reservation.getConsumer().getFirstname() + " " + reservation.getConsumer().getLastname()
-                        + " en " + reservation.getSpace().getNameSpace() + " ha sido cancelada.");
+        reservation.setCancellationReason(reason);
+        // Si la cancela el dueño o un admin estando pagada, al cliente se le debe el total.
+        // Si la cancela el cliente correspondería aplicar la política de cancelación (no implementado)
+        boolean reintegro = (reason == ECancellationReason.OWNER || reason == ECancellationReason.PLATFORM)
+                && paymentRepository.existsByReservation_IdAndStatus(reservation.getId(), "approved");
+        if (reintegro) reservation.setRefundPending(true);
+        String avisoReintegro = reintegro ? " Se te va a reintegrar el total de lo pagado." : "";
+
+        Consumer client = reservation.getConsumer();
+        Consumer owner = reservation.getSpace().getConsumerOwner();
+        String espacio = reservation.getSpace().getNameSpace();
+        String cliente = client.getFirstname() + " " + client.getLastname();
+        // Se avisa a la parte que no canceló
+        switch (reason) {
+            case CLIENT -> notificationService.createNotification(owner,
+                    "La reserva de " + cliente + " en " + espacio + " fue cancelada por el cliente.");
+            case OWNER -> notificationService.createNotification(client,
+                    "Tu reserva \"" + reservation.getTitle() + "\" en " + espacio + " fue cancelada por el dueño del espacio." + avisoReintegro);
+            case EXPIRED -> {
+                notificationService.createNotification(client,
+                        "Tu reserva \"" + reservation.getTitle() + "\" en " + espacio + " se canceló porque el dueño no la confirmó a tiempo.");
+                notificationService.createNotification(owner,
+                        "La reserva de " + cliente + " en " + espacio + " se canceló porque no la confirmaste antes de la fecha de inicio.");
+            }
+            default -> {
+                notificationService.createNotification(client,
+                        "Tu reserva \"" + reservation.getTitle() + "\" en " + espacio + " fue cancelada por un administrador." + avisoReintegro);
+                notificationService.createNotification(owner,
+                        "La reserva de " + cliente + " en " + espacio + " fue cancelada por un administrador.");
+            }
+        }
         return reservationRepository.save(reservation);
     }
 

@@ -1,5 +1,6 @@
 package com.utn.space.venueaapi.service;
 
+import com.utn.space.venueaapi.model.ECancellationReason;
 import com.utn.space.venueaapi.model.ReservationStatus;
 import com.utn.space.venueaapi.repository.ReservationRepository;
 import lombok.RequiredArgsConstructor;
@@ -41,7 +42,7 @@ public class ReservationStatusScheduler {
         );
 
         for (Integer id : expiredIds) {
-            reservationService.cancelReservation(id);
+            reservationService.cancelReservation(id, ECancellationReason.EXPIRED);
         }
 
         int expired = expiredIds.size();

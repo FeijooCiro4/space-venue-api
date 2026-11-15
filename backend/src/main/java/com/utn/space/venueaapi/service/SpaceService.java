@@ -34,6 +34,8 @@ public class SpaceService {
     CancellationPoliciesService cancellationPoliciesService;
     @Autowired
     CommentRepository commentRepository;
+    @Autowired
+    ReservationClosureService reservationClosureService;
 
 
     public List<Space> findAll(){
@@ -45,7 +47,7 @@ public class SpaceService {
     }
 
     public Boolean existsById(Integer id){
-        return spaceRepository.existsByIdSpaceAndIsActiveTrue(id);
+        return spaceRepository.existsBookableById(id);
     }
 
     public Boolean existsByIdIncludingInactive(Integer id){
@@ -63,12 +65,15 @@ public class SpaceService {
         return space;
     }
 
+    @Transactional
     public void deleteById(Integer id){
         if(!spaceRepository.existsById(id)){
             throw new IdNotFoundException("el espacio", id);
         }
         //Este metodo efectua soft DELETE
         Space space = spaceRepository.findById(id).orElseThrow(() -> new IdNotFoundException("el espacio", id));
+        reservationClosureService.closeFutureReservations(space, ECancellationReason.PLATFORM,
+                "un administrador dio de baja el espacio.");
         space.setIsActive(false);
         space.setDeactivationReason(ESpaceDeactivationReason.ADMIN);
         spaceRepository.save(space);
@@ -80,6 +85,10 @@ public class SpaceService {
         Space space = findById(id);
         if (Boolean.TRUE.equals(active) && isDeletedByOwner(space)) {
             throw new InvalidDataException("No se puede activar un espacio que fue eliminado por su dueño.");
+        }
+        if (Boolean.FALSE.equals(active)) {
+            reservationClosureService.closeFutureReservations(space, ECancellationReason.PLATFORM,
+                    "un administrador dio de baja el espacio.");
         }
         space.setIsActive(active);
         space.setDeactivationReason(Boolean.TRUE.equals(active) ? null : ESpaceDeactivationReason.ADMIN);
@@ -103,6 +112,10 @@ public class SpaceService {
         Space spaceToInsert = new Space();
         spaceToInsert.setIdSpace(null);
         spaceToInsert.setConsumerOwner(consumerService.findById(spaceDTO.idConsumerOwner()));
+        //Si el dueño no puede publicar, el espacio quedaría oculto desde el alta
+        if (!spaceToInsert.isOwnerAvailable()) {
+            throw new InvalidDataException("El dueño del espacio debe tener la cuenta activa y ser oferente o administrador.");
+        }
         spaceToInsert.setLocation(locationService.findByLongitudeAndLatitude(spaceDTO.location().longitude(), spaceDTO.location().latitude()));
         spaceToInsert.setCancellationPolicies(cancellationPoliciesService.findByType(parsearPolitica(spaceDTO.cancellationPolicies())));
         spaceToInsert.setNameSpace(spaceDTO.nameSpace());
@@ -309,6 +322,8 @@ public class SpaceService {
         if (isDeletedByOwner(spaceToDelete)) {
             throw new InvalidDataException("El espacio ya fue eliminado.");
         }
+        reservationClosureService.closeFutureReservations(spaceToDelete, ECancellationReason.OWNER,
+                "el dueño eliminó el espacio.");
         spaceToDelete.setIsActive(false);
         spaceToDelete.setDeletedByOwner(true);
         spaceToDelete.setDeactivationReason(ESpaceDeactivationReason.OWNER_DELETED);

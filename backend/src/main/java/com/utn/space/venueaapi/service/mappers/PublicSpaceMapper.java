@@ -25,6 +25,7 @@ public final class PublicSpaceMapper {
                 space.getRating(), space.getCommentCount() == null ? 0 : space.getCommentCount(),
                 space.getIsActive(), Boolean.TRUE.equals(space.getDeletedByOwner()),
                 deactivationReason(space),
+                space.isOwnerAvailable(),
                 space.getServices() == null ? List.of() : space.getServices().stream()
                         .map(item -> new SpaceResponseDTO.PublicService(item.getId(), item.getDescription(), item.getPrice(), item.getIsActive()))
                         .toList());

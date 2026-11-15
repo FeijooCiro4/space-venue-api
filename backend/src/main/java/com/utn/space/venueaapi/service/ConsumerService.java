@@ -1,15 +1,11 @@
 package com.utn.space.venueaapi.service;
 
 import com.utn.space.venueaapi.exceptions.IdNotFoundException;
-import com.utn.space.venueaapi.exceptions.InvalidDataException;
 import com.utn.space.venueaapi.exceptions.NameNotFoundException;
 import com.utn.space.venueaapi.model.Consumer;
 import com.utn.space.venueaapi.model.Credential;
-import com.utn.space.venueaapi.model.EDeactivationReason;
-import com.utn.space.venueaapi.model.ERoles;
 import com.utn.space.venueaapi.model.records.ConsumerFilterDTO;
 import com.utn.space.venueaapi.repository.ConsumerRepository;
-import com.utn.space.venueaapi.repository.SpaceRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
@@ -26,8 +22,6 @@ public class ConsumerService {
     @Autowired
     private final ConsumerRepository consumerRepository;
 
-    @Autowired
-    private final SpaceRepository spaceRepository;
 
     public Boolean existsById(Integer id){
         return consumerRepository.existsById(id);
@@ -96,39 +90,11 @@ public class ConsumerService {
         Consumer consumer = findByCredentialsUsername(username);
         return consumer.getIdConsumer();
     }
-    public void deleteUserLogically(String username) {
-        Consumer consumer = consumerRepository.findByUsername(username)
-                .orElseThrow(() -> new NameNotFoundException("No se encontró el usuario."));
-
-        Credential credential = consumer.getCredentials();
-        if (credential == null) {
-            throw new NameNotFoundException("No se encontraron credenciales para este usuario.");
-        }
-
-        credential.setIsActive(false);
-        credential.setDeactivationReason(EDeactivationReason.USER_REQUEST);
-        consumerRepository.save(consumer);
-    }
-
-    //Permite al admin activar o desactivar cualquier cuenta. requesterUsername es el admin que hace el pedido
+    //Permite al admin reactivar una cuenta. Sus espacios vuelven a verse solos (ver Space.isOwnerAvailable);
+    //las reservas canceladas en la baja no se reviven.
+    //Las bajas se hacen con AccountClosureService, que además cierra las reservas
     @Transactional
-    public void setActive(Integer id, Boolean active, String requesterUsername) {
-        Consumer consumer = findById(id);
-
-        Credential credential = consumer.getCredentials();
-        if (credential == null) {
-            throw new NameNotFoundException("No se encontraron credenciales para este usuario.");
-        }
-        if (Boolean.FALSE.equals(active) && credential.getUsername().equals(requesterUsername)) {
-            throw new InvalidDataException("No podés desactivar tu propia cuenta.");
-        }
-
-        credential.setIsActive(active);
-        credential.setDeactivationReason(Boolean.TRUE.equals(active) ? null : EDeactivationReason.ADMIN);
-        consumerRepository.save(consumer);
-    }
-
-    public void deleteUserLogicallyById(Integer id) {
+    public void reactivate(Integer id) {
         Consumer consumer = findById(id);
 
         Credential credential = consumer.getCredentials();
@@ -136,34 +102,8 @@ public class ConsumerService {
             throw new NameNotFoundException("No se encontraron credenciales para este usuario.");
         }
 
-        // Apagamos el flag de activo
-        credential.setIsActive(false);
-        credential.setDeactivationReason(EDeactivationReason.ADMIN);
-        consumerRepository.save(consumer);
-    }
-
-    //Permite al admin cambiar el rol de un usuario entre CLIENT y OFFERER (el que puede publicar espacios).
-    //No se pueden dar ni quitar permisos de ADMIN por este medio
-    @Transactional
-    public void setRol(Integer id, ERoles rol) {
-        Consumer consumer = findById(id);
-
-        Credential credential = consumer.getCredentials();
-        if (credential == null) {
-            throw new NameNotFoundException("No se encontraron credenciales para este usuario");
-        }
-        if (rol != ERoles.ROLE_CLIENT && rol != ERoles.ROLE_OFFERER) {
-            throw new InvalidDataException("Solo se puede asignar el rol de cliente u oferente.");
-        }
-        if (credential.getRol() == ERoles.ROLE_ADMIN) {
-            throw new InvalidDataException("No se puede cambiar el rol de un administrador.");
-        }
-        if (rol == ERoles.ROLE_CLIENT && credential.getRol() == ERoles.ROLE_OFFERER
-                && spaceRepository.existsByConsumerOwnerIdConsumerAndDeletedByOwnerFalse(id)) {
-            throw new InvalidDataException("El usuario tiene espacios publicados. Deben eliminarse antes de quitarle el rol de oferente.");
-        }
-
-        credential.setRol(rol);
+        credential.setIsActive(true);
+        credential.setDeactivationReason(null);
         consumerRepository.save(consumer);
     }
 }

@@ -13,6 +13,8 @@ public record SpaceResponseDTO(
         BigDecimal basePrice, LocalDate publicationDate, Integer bufferTime,
         Double rating, Integer commentCount,
         Boolean isActive, Boolean deletedByOwner, ESpaceDeactivationReason deactivationReason,
+        // false si el dueño está dado de baja o ya no es oferente: el espacio queda oculto aunque isActive sea true
+        Boolean ownerAvailable,
         List<PublicService> services
 ) {
     public record PublicOwner(Integer idConsumer, String firstname, String lastname) {}
