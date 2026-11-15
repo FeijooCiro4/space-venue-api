@@ -45,7 +45,7 @@ public class SpaceService {
     }
 
     public Boolean existsById(Integer id){
-        return spaceRepository.existsByIdSpaceAndIsActiveTrue(id);
+        return spaceRepository.existsBookableById(id);
     }
 
     public Boolean existsByIdIncludingInactive(Integer id){
@@ -103,6 +103,10 @@ public class SpaceService {
         Space spaceToInsert = new Space();
         spaceToInsert.setIdSpace(null);
         spaceToInsert.setConsumerOwner(consumerService.findById(spaceDTO.idConsumerOwner()));
+        //Si el dueño no puede publicar, el espacio quedaría oculto desde el alta
+        if (!spaceToInsert.isOwnerAvailable()) {
+            throw new InvalidDataException("El dueño del espacio debe tener la cuenta activa y ser oferente o administrador.");
+        }
         spaceToInsert.setLocation(locationService.findByLongitudeAndLatitude(spaceDTO.location().longitude(), spaceDTO.location().latitude()));
         spaceToInsert.setCancellationPolicies(cancellationPoliciesService.findByType(parsearPolitica(spaceDTO.cancellationPolicies())));
         spaceToInsert.setNameSpace(spaceDTO.nameSpace());

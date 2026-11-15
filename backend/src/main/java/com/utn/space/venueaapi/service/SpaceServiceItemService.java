@@ -39,7 +39,7 @@ public class SpaceServiceItemService {
         if(!spaceService.findById(id).getConsumerOwner().getIdConsumer().equals(currentConsumerId)){
             //Si no soy el dueño del espacio, se filtraran espacios inactivos
             List<SpaceServiceItemDTO> spaceServiceItemDTOs = spaceServiceItemRepository.findAllSpaceServicesBySpaceId(id).stream()
-                    .filter(spaceServiceItemDTO -> spaceService.findById(spaceServiceItemDTO.idSpace()).getIsActive()).toList();
+                    .filter(spaceServiceItemDTO -> spaceService.findById(spaceServiceItemDTO.idSpace()).isBookable()).toList();
 
             //Luego se filtran Servicios inactivos
             spaceServiceItemDTOs = spaceServiceItemDTOs.stream().filter(spaceServiceItemDTO -> spaceServiceItemDTO.isActive()).toList();

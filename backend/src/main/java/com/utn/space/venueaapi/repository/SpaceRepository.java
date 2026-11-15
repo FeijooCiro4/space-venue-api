@@ -15,6 +15,10 @@ import java.util.Optional;
 
 @Repository
 public interface SpaceRepository extends JpaRepository<Space, Integer> {
+    // Misma regla que Space.isBookable(): espacio activo y dueño con cuenta activa y rol OFFERER o ADMIN
+    String BOOKABLE = "s.isActive = true AND s.consumerOwner.credentials.isActive = true " +
+            "AND s.consumerOwner.credentials.rol IN (com.utn.space.venueaapi.model.ERoles.ROLE_OFFERER, com.utn.space.venueaapi.model.ERoles.ROLE_ADMIN)";
+
     // Indica si el usuario tiene espacios que no fueron eliminados por él.
     // Se usa para no quitarle el rol OFFERER a alguien que todavía gestiona espacios
     boolean existsByConsumerOwnerIdConsumerAndDeletedByOwnerFalse(Integer idConsumer);
@@ -30,7 +34,7 @@ public interface SpaceRepository extends JpaRepository<Space, Integer> {
             "( :maxPrice IS NULL OR s.basePrice <= :maxPrice ) AND " +
             "( :idConsumerOwner IS NULL OR s.consumerOwner.idConsumer = :idConsumerOwner ) AND " +
             "( :idLocation IS NULL OR s.location.idLocation = :idLocation ) AND " +
-            "( s.isActive)" //Este metodo solo busca espacios activos
+            BOOKABLE //Este metodo solo busca espacios publicados (activos y con el dueño disponible)
 
     )
     List<Space> findAllByFields(
@@ -57,7 +61,7 @@ public interface SpaceRepository extends JpaRepository<Space, Integer> {
     );
 
 
-    @Query("SELECT s FROM Space s WHERE s.isActive")
+    @Query("SELECT s FROM Space s WHERE " + BOOKABLE)
     List<Space>findAllWithOutInactives();
 
 
@@ -70,5 +74,6 @@ public interface SpaceRepository extends JpaRepository<Space, Integer> {
             @Param("commentCount") Integer commentCount
     );
 
-    boolean existsByIdSpaceAndIsActiveTrue(Integer idSpace);
+    @Query("SELECT COUNT(s) > 0 FROM Space s WHERE s.idSpace = :idSpace AND " + BOOKABLE)
+    boolean existsBookableById(@Param("idSpace") Integer idSpace);
 }

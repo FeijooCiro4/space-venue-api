@@ -150,8 +150,8 @@ public class ReservationService {
         if (from == null || until == null || !until.isAfter(from) || from.isBefore(LocalDateTime.now())) {
             throw new InvalidDateException("La reserva debe comenzar en el futuro y tener una duración positiva.");
         }
-        if (!Boolean.TRUE.equals(space.getIsActive())) {
-            throw new InvalidReservationException("El espacio no está activo.");
+        if (!space.isBookable()) {
+            throw new InvalidReservationException("El espacio no está disponible para reservas.");
         }
         if (space.getConsumerOwner().getIdConsumer().equals(consumer.getIdConsumer())) {
             throw new SelfReservationException("No puede reservar su propio espacio.");

@@ -91,6 +91,11 @@ public class ReservationController {
         try {
             Reservation reservation = reservationService.findById(id);
 
+            // No se puede pagar si el espacio dejó de estar disponible (desactivado o dueño dado de baja/degradado)
+            if (!reservation.getSpace().isBookable()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponseDTO(400, HttpStatus.BAD_REQUEST.getReasonPhrase(), "El espacio ya no está disponible para reservas."));
+            }
+
             // Validar que la reserva esté confirmada por el dueño antes de poder pagar
             if (!"CONFIRMED".equals(reservation.getStatus().toString())) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponseDTO(400, HttpStatus.BAD_REQUEST.getReasonPhrase(), "La reserva debe ser confirmada por el dueño del espacio antes de poder pagar."));
