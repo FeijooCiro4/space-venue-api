@@ -13,7 +13,7 @@ El backend vive en `backend/` y se ejecuta como una aplicación Spring Boot inde
 
 ## 2. Reglas de Negocio y Decisiones de Arquitectura
 
-- **Duración del evento**: El requisito funcional del producto es que cada evento dure estrictamente menos de 24 horas y se desarrolle dentro de una misma jornada.
+- **Duración del evento**: El requisito funcional del producto es que cada evento dure estrictamente menos de 24 horas.
 - **Bloqueo de autorreserva**: El cliente que solicita la reserva no puede ser el propietario del espacio; la comprobación se realiza en el servicio de reservas.
 - **Disponibilidad y concurrencia**: Las reservas activas en estado `TENTATIVE`, `CONFIRMED`, `IN_PROGRESS` o `COMPLETED` ocupan el calendario. La creación y las operaciones que cambian disponibilidad bloquean las entidades necesarias para serializar solicitudes concurrentes. Las reservas `REJECTED` o `CANCELLED` no bloquean el horario.
 - **Buffer time**: `bufferTime` se expresa en minutos y se aplica antes y después de una reserva al comprobar solapamientos, para evitar eventos consecutivos sin intervalo de preparación.
