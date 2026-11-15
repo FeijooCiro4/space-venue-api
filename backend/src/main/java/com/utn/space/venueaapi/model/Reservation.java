@@ -42,6 +42,10 @@ public class Reservation {
     @Enumerated(EnumType.STRING)
     private ECancellationReason cancellationReason;
 
+    // true si se canceló estando pagada por una causa ajena al cliente (dueño, admin o baja) y hay que devolverle el total.
+    // Por ahora el reembolso NO se hace automáticamente: este flag marca las reservas que quedan pendientes de reintegro
+    private Boolean refundPending = false;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

@@ -23,6 +23,9 @@ public interface SpaceRepository extends JpaRepository<Space, Integer> {
     // Se usa para no quitarle el rol OFFERER a alguien que todavía gestiona espacios
     boolean existsByConsumerOwnerIdConsumerAndDeletedByOwnerFalse(Integer idConsumer);
 
+    // Todos los espacios de un dueño, en cualquier estado
+    List<Space> findAllByConsumerOwnerIdConsumer(Integer idConsumer);
+
     // Bloquear el espacio también funciona cuando aún no tiene ninguna reserva.
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT s FROM Space s WHERE s.idSpace = :id")

@@ -300,6 +300,12 @@ public class ReservationService {
         requireState(reservation, ReservationStatus.TENTATIVE, ReservationStatus.CONFIRMED);
         reservation.setStatus(ReservationStatus.CANCELLED);
         reservation.setCancellationReason(reason);
+        // Si la cancela el dueño o un admin estando pagada, al cliente se le debe el total.
+        // Si la cancela el cliente correspondería aplicar la política de cancelación (no implementado)
+        boolean reintegro = (reason == ECancellationReason.OWNER || reason == ECancellationReason.PLATFORM)
+                && paymentRepository.existsByReservation_IdAndStatus(reservation.getId(), "approved");
+        if (reintegro) reservation.setRefundPending(true);
+        String avisoReintegro = reintegro ? " Se te va a reintegrar el total de lo pagado." : "";
 
         Consumer client = reservation.getConsumer();
         Consumer owner = reservation.getSpace().getConsumerOwner();
@@ -310,7 +316,7 @@ public class ReservationService {
             case CLIENT -> notificationService.createNotification(owner,
                     "La reserva de " + cliente + " en " + espacio + " fue cancelada por el cliente.");
             case OWNER -> notificationService.createNotification(client,
-                    "Tu reserva \"" + reservation.getTitle() + "\" en " + espacio + " fue cancelada por el dueño del espacio.");
+                    "Tu reserva \"" + reservation.getTitle() + "\" en " + espacio + " fue cancelada por el dueño del espacio." + avisoReintegro);
             case EXPIRED -> {
                 notificationService.createNotification(client,
                         "Tu reserva \"" + reservation.getTitle() + "\" en " + espacio + " se canceló porque el dueño no la confirmó a tiempo.");
@@ -319,7 +325,7 @@ public class ReservationService {
             }
             default -> {
                 notificationService.createNotification(client,
-                        "Tu reserva \"" + reservation.getTitle() + "\" en " + espacio + " fue cancelada por un administrador.");
+                        "Tu reserva \"" + reservation.getTitle() + "\" en " + espacio + " fue cancelada por un administrador." + avisoReintegro);
                 notificationService.createNotification(owner,
                         "La reserva de " + cliente + " en " + espacio + " fue cancelada por un administrador.");
             }

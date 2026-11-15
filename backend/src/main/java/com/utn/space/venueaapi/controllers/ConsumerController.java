@@ -6,6 +6,7 @@ import com.utn.space.venueaapi.model.Credential;
 import com.utn.space.venueaapi.model.ERoles;
 import com.utn.space.venueaapi.model.records.ConsumerFilterDTO;
 
+import com.utn.space.venueaapi.service.AccountClosureService;
 import com.utn.space.venueaapi.service.ConsumerService;
 import com.utn.space.venueaapi.service.RegistrationService;
 import com.utn.space.venueaapi.service.TokenBlacklistService;
@@ -45,6 +46,9 @@ public class ConsumerController {
 
     @Autowired
     private final TokenBlacklistService blacklistService;
+
+    @Autowired
+    private final AccountClosureService accountClosureService;
 
     @PostMapping("/usuarios")
     @Operation(
@@ -105,7 +109,12 @@ public class ConsumerController {
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<MessageResponseDTO> toggleUserStatus(
             @PathVariable Integer id, @RequestParam Boolean active, Principal principal) {
-        consumerService.setActive(id, active, principal.getName());
+        // Desactivar es la misma baja que DELETE /usuarios/{id}; activar solo vuelve a habilitar la cuenta
+        if (Boolean.TRUE.equals(active)) {
+            consumerService.reactivate(id);
+        } else {
+            accountClosureService.deactivateByAdmin(id, principal.getName());
+        }
         return ResponseEntity.ok(new MessageResponseDTO(active ? "Usuario activado." : "Usuario desactivado."));
     }
 
@@ -113,11 +122,11 @@ public class ConsumerController {
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(
             summary = "Cambia el rol de un Usuario.",
-            description = "Asigna ROLE_CLIENT o ROLE_OFFERER a un usuario por ID. Solo los OFFERER (y los ADMIN) pueden publicar espacios. No permite modificar administradores ni quitarle el rol OFFERER a quien todavía tiene espacios."
+            description = "Asigna ROLE_CLIENT o ROLE_OFFERER a un usuario por ID. Solo los OFFERER (y los ADMIN) pueden publicar espacios. No permite modificar administradores. Al pasar de OFFERER a CLIENT sus espacios quedan ocultos y se cancelan sus reservas futuras (se rechaza si alguna está en curso)."
     )
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<MessageResponseDTO> changeUserRol(@PathVariable Integer id, @RequestParam ERoles rol) {
-        consumerService.setRol(id, rol);
+        accountClosureService.changeRol(id, rol);
         return ResponseEntity.ok(new MessageResponseDTO(rol == ERoles.ROLE_OFFERER
                 ? "El usuario ahora puede publicar espacios."
                 : "El usuario ya no puede publicar espacios."));
@@ -160,8 +169,8 @@ public class ConsumerController {
             summary = "Elimina un usuario por ID."
     )
     @SecurityRequirement(name = "bearerAuth")
-    public ResponseEntity<MessageResponseDTO> deleteById(@PathVariable Integer id){
-        consumerService.deleteUserLogicallyById(id);
+    public ResponseEntity<MessageResponseDTO> deleteById(@PathVariable Integer id, Principal principal){
+        accountClosureService.deactivateByAdmin(id, principal.getName());
         return ResponseEntity.ok(new MessageResponseDTO("Usuario desactivado con exito"));
     }
 
@@ -223,7 +232,7 @@ public class ConsumerController {
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<MessageResponseDTO> deleteUser(Principal principal, HttpServletRequest request) {
         String username = principal.getName();
-        consumerService.deleteUserLogically(username);
+        accountClosureService.deactivateBySelf(username);
 
         // Invalida el token usado en la baja, igual que en el logout
         String bearerToken = request.getHeader("Authorization");
