@@ -91,8 +91,10 @@ public class ReservationController {
         try {
             Reservation reservation = reservationService.findById(id);
 
-            // No se puede pagar si el espacio dejó de estar disponible (desactivado o dueño dado de baja/degradado)
-            if (!reservation.getSpace().isBookable()) {
+            // No se puede pagar si el dueño fue dado de baja o ya no es oferente.
+            // Se usa isOwnerAvailable y no isBookable: un espacio que volvió a aprobación conserva sus reservas (y se pueden pagar).
+            // Si el espacio se eliminó o lo desactivó el admin, sus reservas ya se cancelaron
+            if (!reservation.getSpace().isOwnerAvailable()) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new ErrorResponseDTO(400, HttpStatus.BAD_REQUEST.getReasonPhrase(), "El espacio ya no está disponible para reservas."));
             }
 
@@ -368,10 +370,12 @@ public class ReservationController {
             description = "Cambia el estado de TENTATIVE o CONFIRMED a CANCELLED."
     )
     @SecurityRequirement(name = "bearerAuth")
-    public ResponseEntity<Reservation> cancelReservation(@Parameter(description = "ID de la Reservación") @PathVariable Integer id){
+    public ResponseEntity<Reservation> cancelReservation(@Parameter(description = "ID de la Reservación") @PathVariable Integer id,
+                                                         Authentication authentication){
+        boolean isAdmin = authentication.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
         return ResponseEntity
                 .status(HttpStatus.OK)
-                .body(reservationService.cancelReservation(id));
+                .body(reservationService.cancelReservation(id, authentication.getName(), isAdmin));
     }
 
     @DeleteMapping("/{id}")

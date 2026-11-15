@@ -34,6 +34,8 @@ public class SpaceService {
     CancellationPoliciesService cancellationPoliciesService;
     @Autowired
     CommentRepository commentRepository;
+    @Autowired
+    ReservationClosureService reservationClosureService;
 
 
     public List<Space> findAll(){
@@ -63,12 +65,15 @@ public class SpaceService {
         return space;
     }
 
+    @Transactional
     public void deleteById(Integer id){
         if(!spaceRepository.existsById(id)){
             throw new IdNotFoundException("el espacio", id);
         }
         //Este metodo efectua soft DELETE
         Space space = spaceRepository.findById(id).orElseThrow(() -> new IdNotFoundException("el espacio", id));
+        reservationClosureService.closeFutureReservations(space, ECancellationReason.PLATFORM,
+                "un administrador dio de baja el espacio.");
         space.setIsActive(false);
         space.setDeactivationReason(ESpaceDeactivationReason.ADMIN);
         spaceRepository.save(space);
@@ -80,6 +85,10 @@ public class SpaceService {
         Space space = findById(id);
         if (Boolean.TRUE.equals(active) && isDeletedByOwner(space)) {
             throw new InvalidDataException("No se puede activar un espacio que fue eliminado por su dueño.");
+        }
+        if (Boolean.FALSE.equals(active)) {
+            reservationClosureService.closeFutureReservations(space, ECancellationReason.PLATFORM,
+                    "un administrador dio de baja el espacio.");
         }
         space.setIsActive(active);
         space.setDeactivationReason(Boolean.TRUE.equals(active) ? null : ESpaceDeactivationReason.ADMIN);
@@ -313,6 +322,8 @@ public class SpaceService {
         if (isDeletedByOwner(spaceToDelete)) {
             throw new InvalidDataException("El espacio ya fue eliminado.");
         }
+        reservationClosureService.closeFutureReservations(spaceToDelete, ECancellationReason.OWNER,
+                "el dueño eliminó el espacio.");
         spaceToDelete.setIsActive(false);
         spaceToDelete.setDeletedByOwner(true);
         spaceToDelete.setDeactivationReason(ESpaceDeactivationReason.OWNER_DELETED);

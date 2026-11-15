@@ -38,6 +38,10 @@ public class Reservation {
     @Enumerated(EnumType.STRING)
     private ReservationStatus status;
 
+    // Por qué se canceló (solo cuando status es CANCELLED). null en las canceladas antes de existir el campo
+    @Enumerated(EnumType.STRING)
+    private ECancellationReason cancellationReason;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

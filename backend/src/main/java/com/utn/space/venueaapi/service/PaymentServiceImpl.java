@@ -12,6 +12,7 @@ import com.utn.space.venueaapi.exceptions.IdNotFoundException;
 import com.utn.space.venueaapi.config.ClientRedirectProperties;
 import com.utn.space.venueaapi.model.PaymentModel;
 import com.utn.space.venueaapi.model.Reservation;
+import com.utn.space.venueaapi.model.ECancellationReason;
 import com.utn.space.venueaapi.model.ReservationStatus;
 import com.utn.space.venueaapi.repository.PaymentRepository;
 import com.utn.space.venueaapi.repository.ReservationRepository;
@@ -123,6 +124,7 @@ public class PaymentServiceImpl implements IPaymentService {
             } else if ("rejected".equals(mpPayment.getStatus())) {
                 // Si el pago es rechazado por falta de fondos, fraude, etc.
                 actualReservation.setStatus(ReservationStatus.CANCELLED);
+                actualReservation.setCancellationReason(ECancellationReason.PAYMENT_REJECTED);
             }
             reservationRepository.save(actualReservation);
 
