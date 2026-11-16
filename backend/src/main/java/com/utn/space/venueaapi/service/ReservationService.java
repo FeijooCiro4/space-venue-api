@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Isolation;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -149,6 +150,9 @@ public class ReservationService {
                                  LocalDateTime until, Integer excludedReservationId) {
         if (from == null || until == null || !until.isAfter(from) || from.isBefore(LocalDateTime.now())) {
             throw new InvalidDateException("La reserva debe comenzar en el futuro y tener una duración positiva.");
+        }
+        if (Duration.between(from, until).compareTo(Duration.ofHours(24)) >= 0) {
+            throw new InvalidDateException("La reserva debe durar menos de 24 horas.");
         }
         if (!space.isBookable()) {
             throw new InvalidReservationException("El espacio no está disponible para reservas.");
