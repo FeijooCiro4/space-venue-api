@@ -127,8 +127,8 @@ public class CommentService {
             throw new InvalidDataException("Por favor ingrese una descripción para su comentario.");
         }
 
-        if(commentDTO.score() < 0 || commentDTO.score() > 5){
-            throw new InvalidDataException("La puntuación debe estar entre 0 y 5.");
+        if(commentDTO.score() == null || commentDTO.score() < 1 || commentDTO.score() > 5){
+            throw new InvalidDataException("La puntuación debe estar entre 1 y 5.");
         }
 
         Integer currentUserId = consumerService.getLoggedConsumerId(); //Comentamos siempre con el id de quien esta loggeado
@@ -163,8 +163,8 @@ public class CommentService {
             throw new InvalidDataException("No se puede modificar un comentario que no está activo.");
         }
 
-        if((commentDTO.score()*2) % 1 != 0){
-            throw new InvalidDataException("La puntuación ingresada no es válida.");
+        if(commentDTO.score() == null || commentDTO.score() < 1 || commentDTO.score() > 5){
+            throw new InvalidDataException("La puntuación debe estar entre 1 y 5.");
         }
 
         Integer currentUserId = consumerService.getLoggedConsumerId();
