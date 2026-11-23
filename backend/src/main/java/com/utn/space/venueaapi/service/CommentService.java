@@ -122,10 +122,18 @@ public class CommentService {
         commentRepository.save(commentToDelete);
     }
 
+    private void validarLongitudDescripcion(String description){
+        if(description.length() > 250){
+            throw new InvalidDataException("La reseña no puede superar los 250 caracteres.");
+        }
+    }
+
     public void insertComment(CommentDTO commentDTO){
         if(commentDTO.description().isBlank()){
             throw new InvalidDataException("Por favor ingrese una descripción para su comentario.");
         }
+
+        validarLongitudDescripcion(commentDTO.description());
 
         if(commentDTO.score() == null || commentDTO.score() < 1 || commentDTO.score() > 5){
             throw new InvalidDataException("La puntuación debe estar entre 1 y 5.");
@@ -155,6 +163,8 @@ public class CommentService {
         if(commentDTO.description().isBlank()){
             throw new InvalidDataException("Por favor ingrese una descripción para su comentario.");
         }
+
+        validarLongitudDescripcion(commentDTO.description());
 
         Comment existingComment = commentRepository.findById(id)
                 .orElseThrow(() -> new IdNotFoundException("el comentario", id));
