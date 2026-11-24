@@ -75,6 +75,15 @@ public class ReservationService {
         return reservationRepository.findAllByConsumer_IdConsumer(loggedCustomerId);
     }
 
+    @Transactional(readOnly = true)
+    public List<Reservation> findOwnerReservations(Integer idSpace, ReservationStatus status,String title, LocalDate date) {
+        Integer idOwner = consumerService.getLoggedConsumerId();
+        String titleFilter = (title == null) ? "" : title.trim();
+        LocalDateTime from = (date == null) ? null : date.atStartOfDay();
+        LocalDateTime to   = (date == null) ? null : date.plusDays(1).atStartOfDay();
+        return reservationRepository.findOwnerReservations(idOwner, idSpace, status, titleFilter, from, to);
+    }
+
     public List<Reservation> findAllBySpaceId(Integer idSpace) {
         return reservationRepository.findAllBySpace_IdSpace(idSpace);
     }

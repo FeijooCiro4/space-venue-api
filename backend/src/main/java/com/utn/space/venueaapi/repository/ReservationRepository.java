@@ -109,4 +109,23 @@ public interface ReservationRepository extends JpaRepository<Reservation,Integer
             @Param("status") ReservationStatus status,
             @Param("now") LocalDateTime now
     );
+
+    @Query("""
+SELECT r FROM Reservation r
+WHERE r.space.consumerOwner.idConsumer = :idOwner
+  AND r.isActive = true
+  AND (:idSpace IS NULL OR r.space.idSpace = :idSpace)
+  AND (:status  IS NULL OR r.status = :status)
+  AND LOWER(r.title) LIKE LOWER(CONCAT('%', :title, '%'))
+  AND (:from    IS NULL OR r.untilDate > :from)
+  AND (:to      IS NULL OR r.fromDate  < :to)
+ORDER BY r.fromDate DESC
+""")
+    List<Reservation> findOwnerReservations(
+            @Param("idOwner") Integer idOwner,
+            @Param("idSpace") Integer idSpace,
+            @Param("status") ReservationStatus status,
+            @Param("title") String title,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to);
 }

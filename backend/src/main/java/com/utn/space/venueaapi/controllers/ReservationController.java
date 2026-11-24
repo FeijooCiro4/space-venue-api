@@ -3,6 +3,7 @@ package com.utn.space.venueaapi.controllers;
 import com.mercadopago.exceptions.MPApiException;
 import com.mercadopago.exceptions.MPException;
 import com.utn.space.venueaapi.model.Reservation;
+import com.utn.space.venueaapi.model.ReservationStatus;
 import com.utn.space.venueaapi.model.flags.Create;
 import com.utn.space.venueaapi.model.flags.Update;
 import com.utn.space.venueaapi.model.records.ErrorResponseDTO;
@@ -390,4 +391,23 @@ public class ReservationController {
                 .status(HttpStatus.OK)
                 .body(reservationService.softDelete(id));
     }
+
+    @GetMapping("/owner")
+    @PreAuthorize("hasAnyRole('OFFERER', 'ADMIN')")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(
+            summary = "Lista las reservas de los espacios del usuario autenticado",
+            description = "Devuelve las reservas de todos los espacios del dueño logueado. Todos los filtros son opcionales."
+    )
+    public ResponseEntity<List<Reservation>> findOwnerReservations(
+            @RequestParam(required = false) Integer idSpace,
+            @RequestParam(required = false) ReservationStatus status,
+            @RequestParam(required = false) String title,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(reservationService.findOwnerReservations(idSpace, status, title, date));
+    }
+
+
 }
