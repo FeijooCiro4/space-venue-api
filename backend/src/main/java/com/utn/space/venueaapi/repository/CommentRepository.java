@@ -23,10 +23,20 @@ public interface CommentRepository extends JpaRepository<Comment,Integer> {
 
     List<Comment> findAllByOrderByScoreAsc();
     List<Comment> findAllByOrderByScoreDesc();
-    boolean existsByConsumer_IdConsumerAndSpace_IdSpace(
-            Integer consumerId,
-            Integer spaceId
+    // Un comentario cuenta para la regla de un comentario por espacio si esta activo o si lo desactivo
+    // un admin. Los que elimino el propio autor no cuentan puede volver a comentar.
+    @Query("""
+            SELECT COUNT(c) > 0 FROM Comment c
+            WHERE c.consumer.idConsumer = :consumerId AND c.space.idSpace = :spaceId
+              AND (c.isActive = true
+                   OR c.deactivationReason IS NULL 
+                   OR c.deactivationReason <> com.utn.space.venueaapi.model.ECommentDeactivationReason.AUTHOR_REQUEST)
+            """)
+    boolean existsBlockingCommentOnSpace(
+            @Param("consumerId") Integer consumerId,
+            @Param("spaceId") Integer spaceId
     );
+
 
     @Query("SELECT c FROM Comment c WHERE c.isActive = true")
     List<Comment> findAllActive();

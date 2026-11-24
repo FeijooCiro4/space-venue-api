@@ -27,11 +27,12 @@ public record CommentDTO (
         Integer idSpace,
 
         @NotBlank(groups = {Create.class, Update.class})
-        @Schema(description = "Detalle del comentario")
+        @Size(max = 250, message = "La reseña no puede superar los 250 caracteres")
+        @Schema(description = "Detalle del comentario", maxLength = 250)
         String description,
 
         @NotNull(groups = {Create.class, Update.class})
-        @Min(value = 0, message = "La calificacion minima es 0")
+        @Min(value = 1, message = "La calificacion minima es 1")
         @Max(value = 5, message = "La calificacion maxima es 5")
         @Schema(description = "Valoracion del comentario", example = "1")
         Byte score,
