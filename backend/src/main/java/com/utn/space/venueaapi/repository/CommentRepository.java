@@ -37,6 +37,15 @@ public interface CommentRepository extends JpaRepository<Comment,Integer> {
             @Param("spaceId") Integer spaceId
     );
 
+    @Query("""
+            SELECT COUNT(c) > 0 FROM Comment c
+            WHERE c.consumer.idConsumer = :consumerId AND c.space.idSpace = :spaceId AND c.isActive = true
+            """)
+    boolean existsActiveCommentOnSpace(
+            @Param("consumerId") Integer consumerId,
+            @Param("spaceId") Integer spaceId
+    );
+
 
     @Query("SELECT c FROM Comment c WHERE c.isActive = true")
     List<Comment> findAllActive();
