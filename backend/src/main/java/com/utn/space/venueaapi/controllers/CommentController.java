@@ -189,11 +189,13 @@ public class CommentController {
     @GetMapping("/byconsumerid/{id}")
     @Operation(
             summary = "Busca TODOS los Comentarios de un usuario.",
-            description = "Devuelve una lista Completa de Comentarios de una ID de usuario."
+            description = "Un administrador recibe todos los comentarios del usuario, incluidos los desactivados y los de espacios desactivados (spaceActive = false). El resto de los usuarios recibe solo los comentarios activos de espacios activos."
     )
     @SecurityRequirement(name = "bearerAuth")
-    public ResponseEntity<List<CommentDTO>> findAllByConsumerId(@PathVariable Integer id){
-        return ResponseEntity.ok(commentService.findAllByConsumerId(id));
+    public ResponseEntity<List<CommentDTO>> findAllByConsumerId(@PathVariable Integer id, Authentication authentication){
+        boolean isAdmin = authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+        return ResponseEntity.ok(commentService.findAllByConsumerId(id, isAdmin));
     }
 
     @GetMapping("/byspaceid/{id}/deactivated")

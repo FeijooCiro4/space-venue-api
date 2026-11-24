@@ -205,11 +205,15 @@ public class CommentService {
         return commentList.stream().map(comment -> CommentMapper.mapToDTO(comment)).toList();
     }
 
-    public List<CommentDTO> findAllByConsumerId(Integer consumerId){
+    //El admin ve todos los comentarios del usuario (desactivados y de espacios desactivados incluidos);
+    //el resto, solo los comentarios activos de espacios activos
+    public List<CommentDTO> findAllByConsumerId(Integer consumerId, boolean isAdmin){
         if(!consumerService.existsById(consumerId)){
             throw new IdNotFoundException("el usuario", consumerId);
         }
-        List<Comment> commentList = commentRepository.findAllByConsumerIdConsumer(consumerId);
+        List<Comment> commentList = isAdmin
+                ? commentRepository.findAllByConsumerIncludingInactiveSpaces(consumerId)
+                : commentRepository.findAllByConsumerIdConsumer(consumerId);
         return commentList.stream().map(comment -> CommentMapper.mapToDTO(comment)).toList();
     }
 

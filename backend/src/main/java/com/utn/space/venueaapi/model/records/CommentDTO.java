@@ -43,6 +43,9 @@ public record CommentDTO (
         @Schema(description = "Motivo de desactivacion del comentario", example = "INAPPROPRIATE_CONTENT")
         String deactivationReason,
 
-        LocalDateTime created_at){
+        LocalDateTime created_at,
+
+        @Schema(description = "Indica si el espacio del comentario esta activo", example = "true")
+        Boolean spaceActive){
 
 }
