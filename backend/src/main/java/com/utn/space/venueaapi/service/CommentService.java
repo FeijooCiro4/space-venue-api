@@ -88,6 +88,10 @@ public class CommentService {
             throw new InvalidDataException("El comentario ya se encuentra activado.");
         }
 
+        if(comment.getDeactivationReason() == ECommentDeactivationReason.AUTHOR_REQUEST){
+            throw new InvalidDataException("No se puede reactivar un comentario eliminado por su autor.");
+        }
+
         comment.setIsActive(true);
         comment.setDeactivationReason(null);
         commentRepository.save(comment);
@@ -250,6 +254,11 @@ public class CommentService {
             throw new InvalidDataException("Solo puede comentar espacios que haya reservado y cuya reserva se haya completado.");
         }
 
+        //Un usuario solo puede tener un comentario por espacio, los que elimino el mismo no cuentan
+        if(commentRepository.existsBlockingCommentOnSpace(loggedConsumerId, commentDTO.idSpace())){
+            throw new InvalidDataException("Ya realizó un comentario en este espacio.");
+        }
+
         insertComment(commentDTO);
     }
 
@@ -267,9 +276,7 @@ public class CommentService {
         validateSpaceExists(spaceId);
         Integer consumerId = consumerService.getLoggedConsumerId();
 
-        return commentRepository.existsByConsumer_IdConsumerAndSpace_IdSpace(
-                consumerId, spaceId
-        );
+        return commentRepository.existsBlockingCommentOnSpace(consumerId, spaceId);
     }
 
     public boolean canCommentOnSpace(Integer spaceId) {
