@@ -1,5 +1,6 @@
 package com.utn.space.venueaapi.controllers;
 
+import com.utn.space.venueaapi.model.ECommentStatus;
 import com.utn.space.venueaapi.model.records.CommentDTO;
 import com.utn.space.venueaapi.service.CommentService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -188,11 +189,13 @@ public class CommentController {
     @GetMapping("/byconsumerid/{id}")
     @Operation(
             summary = "Busca TODOS los Comentarios de un usuario.",
-            description = "Devuelve una lista Completa de Comentarios de una ID de usuario."
+            description = "Un administrador recibe todos los comentarios del usuario, incluidos los desactivados y los de espacios desactivados (spaceActive = false). El resto de los usuarios recibe solo los comentarios activos de espacios activos."
     )
     @SecurityRequirement(name = "bearerAuth")
-    public ResponseEntity<List<CommentDTO>> findAllByConsumerId(@PathVariable Integer id){
-        return ResponseEntity.ok(commentService.findAllByConsumerId(id));
+    public ResponseEntity<List<CommentDTO>> findAllByConsumerId(@PathVariable Integer id, Authentication authentication){
+        boolean isAdmin = authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
+        return ResponseEntity.ok(commentService.findAllByConsumerId(id, isAdmin));
     }
 
     @GetMapping("/byspaceid/{id}/deactivated")
@@ -247,6 +250,18 @@ public class CommentController {
             @PathVariable Integer spaceId
     ) {
         return ResponseEntity.ok(commentService.hasCommentOnSpace(spaceId));
+    }
+
+    @GetMapping("/spaces/{spaceId}/comment-status")
+    @Operation(
+            summary = "Estado del comentario del usuario en un espacio",
+            description = "Responde NONE si el usuario autenticado puede escribir un comentario nuevo en el espacio (no tiene ninguno, o solo tiene los que eliminó él mismo), ACTIVE si tiene su comentario publicado y MODERATED si un administrador lo desactivó."
+    )
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<ECommentStatus> getCommentStatusOnSpace(
+            @PathVariable Integer spaceId
+    ) {
+        return ResponseEntity.ok(commentService.getCommentStatusOnSpace(spaceId));
     }
 
     @GetMapping("/spaces/{spaceId}/can-comment")
