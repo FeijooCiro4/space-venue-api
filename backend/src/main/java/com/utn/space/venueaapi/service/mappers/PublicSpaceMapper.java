@@ -23,7 +23,7 @@ public final class PublicSpaceMapper {
                 space.getNameSpace(), space.getDescription(), space.getBasePrice(), space.getPublicationDate(),
                 space.getBufferTime(),
                 space.getRating(), space.getCommentCount() == null ? 0 : space.getCommentCount(),
-                space.getIsActive(), Boolean.TRUE.equals(space.getDeletedByOwner()),
+                space.getIsActive(), isDeletedByOwner(space),
                 deactivationReason(space),
                 space.isOwnerAvailable(),
                 space.getServices() == null ? List.of() : space.getServices().stream()
@@ -35,8 +35,15 @@ public final class PublicSpaceMapper {
     //Este tipo de arreglo existe para que no se rompan los espacios ya creados cuando se purge la BDD se podrían ir sacando
     private static ESpaceDeactivationReason deactivationReason(Space space) {
         if (Boolean.TRUE.equals(space.getIsActive())) return null;
+        if (space.getDeactivationReason() != null) return space.getDeactivationReason();
         if (Boolean.TRUE.equals(space.getDeletedByOwner())) return ESpaceDeactivationReason.OWNER_DELETED;
-        return space.getDeactivationReason();
+        return null;
+    }
+
+    private static boolean isDeletedByOwner(Space space) {
+        return space.getDeactivationReason() != ESpaceDeactivationReason.OWNER_PAUSED
+                && (Boolean.TRUE.equals(space.getDeletedByOwner())
+                || space.getDeactivationReason() == ESpaceDeactivationReason.OWNER_DELETED);
     }
 
     public static SpaceImageResponseDTO toDto(SpaceImage image) {
