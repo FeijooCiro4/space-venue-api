@@ -4,6 +4,7 @@ import com.utn.space.venueaapi.exceptions.IdNotFoundException;
 import com.utn.space.venueaapi.exceptions.InvalidDataException;
 import com.utn.space.venueaapi.model.Comment;
 import com.utn.space.venueaapi.model.ECommentDeactivationReason;
+import com.utn.space.venueaapi.model.ECommentStatus;
 import com.utn.space.venueaapi.model.Reservation;
 import com.utn.space.venueaapi.model.ReservationStatus;
 import com.utn.space.venueaapi.model.records.CommentDTO;
@@ -204,11 +205,15 @@ public class CommentService {
         return commentList.stream().map(comment -> CommentMapper.mapToDTO(comment)).toList();
     }
 
-    public List<CommentDTO> findAllByConsumerId(Integer consumerId){
+    //El admin ve todos los comentarios del usuario (desactivados y de espacios desactivados incluidos);
+    //el resto, solo los comentarios activos de espacios activos
+    public List<CommentDTO> findAllByConsumerId(Integer consumerId, boolean isAdmin){
         if(!consumerService.existsById(consumerId)){
             throw new IdNotFoundException("el usuario", consumerId);
         }
-        List<Comment> commentList = commentRepository.findAllByConsumerIdConsumer(consumerId);
+        List<Comment> commentList = isAdmin
+                ? commentRepository.findAllByConsumerIncludingInactiveSpaces(consumerId)
+                : commentRepository.findAllByConsumerIdConsumer(consumerId);
         return commentList.stream().map(comment -> CommentMapper.mapToDTO(comment)).toList();
     }
 
@@ -277,6 +282,20 @@ public class CommentService {
         Integer consumerId = consumerService.getLoggedConsumerId();
 
         return commentRepository.existsBlockingCommentOnSpace(consumerId, spaceId);
+    }
+
+    // Si tiene uno publicado es ACTIVE; si no, y alguno de los que bloquean está desactivado, lo desactivó un admin (MODERATED)
+    public ECommentStatus getCommentStatusOnSpace(Integer spaceId) {
+        validateSpaceExists(spaceId);
+        Integer consumerId = consumerService.getLoggedConsumerId();
+
+        if (commentRepository.existsActiveCommentOnSpace(consumerId, spaceId)) {
+            return ECommentStatus.ACTIVE;
+        }
+        if (commentRepository.existsBlockingCommentOnSpace(consumerId, spaceId)) {
+            return ECommentStatus.MODERATED;
+        }
+        return ECommentStatus.NONE;
     }
 
     public boolean canCommentOnSpace(Integer spaceId) {
