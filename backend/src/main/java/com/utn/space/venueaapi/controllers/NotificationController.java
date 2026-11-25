@@ -18,9 +18,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+import com.utn.space.venueaapi.service.NotificationStreamService;
 import jakarta.validation.Valid;
 
 import java.util.List;
@@ -38,6 +41,8 @@ public class NotificationController {
     private NotificationService notificationService;
     @Autowired
     private ConsumerService consumerService;
+    @Autowired
+    private NotificationStreamService notificationStreamService;
 
 ///------------------------------------------------Metodos--------------------------------------------------------------------
     @PostMapping
@@ -169,6 +174,27 @@ public class NotificationController {
     public ResponseEntity<java.util.Map<String, Long>> getUnreadCount() {
         long count = notificationService.countUnseenForConsumer();
         return ResponseEntity.ok(java.util.Map.of("count", count));
+    }
+
+    @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @Operation(
+            summary = "Suscripción SSE a nuevas notificaciones.",
+            description = """
+                Mantiene una conexión Server-Sent Events para el usuario autenticado.
+                Emite el evento "notification" al crear una notificación y "unread-count"
+                al marcar notificaciones como vistas.
+                """
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "Conexión SSE",
+            content = @Content(mediaType = MediaType.TEXT_EVENT_STREAM_VALUE)
+    )
+    @PreAuthorize("hasAnyRole('CLIENT', 'OFFERER', 'ADMIN')")
+    @SecurityRequirement(name = "bearerAuth")
+    public SseEmitter streamNotifications() {
+        Integer consumerId = consumerService.getLoggedConsumerId();
+        return notificationStreamService.subscribe(consumerId);
     }
 
     @GetMapping("/consumer/{id}")
