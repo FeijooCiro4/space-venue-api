@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -22,6 +23,24 @@ public interface SpaceRepository extends JpaRepository<Space, Integer> {
     // Indica si el usuario tiene espacios que no fueron eliminados por él.
     // Se usa para no quitarle el rol OFFERER a alguien que todavía gestiona espacios
     boolean existsByConsumerOwnerIdConsumerAndDeletedByOwnerFalse(Integer idConsumer);
+
+    // Se devuelve el conteo de espacios que coinciden con la ubicación y el piso,
+    // excluyendo un espacio específico si se proporciona su ID (utilizado para excluir
+    // un espacio que está siendo editado).
+    @Query("""
+            SELECT COUNT(s) FROM Space s
+            WHERE s.location.latitude = :latitude
+              AND s.location.longitude = :longitude
+              AND (:excludedSpaceId IS NULL OR s.idSpace <> :excludedSpaceId)
+              AND (:floor IS NULL OR s.floor IS NULL OR s.floor = :floor)
+              AND (s.deletedByOwner = false OR s.deletedByOwner IS NULL)
+            """)
+    long countSpacesConflictingByLocationAndFloor(
+            @Param("latitude") BigDecimal latitude,
+            @Param("longitude") BigDecimal longitude,
+            @Param("floor") Integer floor,
+            @Param("excludedSpaceId") Integer excludedSpaceId
+    );
 
     // Todos los espacios de un dueño, en cualquier estado
     List<Space> findAllByConsumerOwnerIdConsumer(Integer idConsumer);

@@ -114,7 +114,9 @@ public class SpaceService {
         if (!spaceToInsert.isOwnerAvailable()) {
             throw new InvalidDataException("El dueño del espacio debe tener la cuenta activa y ser oferente o administrador.");
         }
-        spaceToInsert.setLocation(locationService.findByLongitudeAndLatitude(spaceDTO.location().longitude(), spaceDTO.location().latitude()));
+        validateLocationAndFloor(spaceDTO.location().longitude(), spaceDTO.location().latitude(), spaceDTO.floor(), null);
+        spaceToInsert.setLocation(locationService.create(spaceDTO.location().longitude(), spaceDTO.location().latitude()));
+        spaceToInsert.setFloor(spaceDTO.floor());
         spaceToInsert.setNameSpace(spaceDTO.nameSpace());
         spaceToInsert.setDescription(spaceDTO.description());
         spaceToInsert.setBasePrice(spaceDTO.basePrice());
@@ -151,7 +153,9 @@ public class SpaceService {
         if (dto.location() == null || dto.location().longitude() == null || dto.location().latitude() == null) {
             throw new InvalidDataException("La ubicación del espacio es obligatoria.");
         }
-        Location location = resolveEditedLocation(space.getLocation(), dto.location().longitude(), dto.location().latitude());
+        validateLocationAndFloor(dto.location().longitude(), dto.location().latitude(), dto.floor(), space.getIdSpace());
+        Location location = locationService.create(dto.location().longitude(), dto.location().latitude());
+        space.setFloor(dto.floor());
         space.setNameSpace(dto.nameSpace());
         space.setDescription(dto.description());
         space.setBasePrice(dto.basePrice());
@@ -180,15 +184,10 @@ public class SpaceService {
                 && Objects.equals(owner.getCredentials().getUsername(), auth.getName());
     }
 
-    //Si las coordenadas no cambiaron se conserva la ubicación actual; si cambiaron se crea una nueva
-    //(no se modifica la existente porque podría estar compartida con otro espacio)
-    private Location resolveEditedLocation(Location current, BigDecimal longitude, BigDecimal latitude) {
-        if (current != null && current.getLongitude() != null && current.getLatitude() != null
-                && current.getLongitude().compareTo(longitude) == 0
-                && current.getLatitude().compareTo(latitude) == 0) {
-            return current;
+    private void validateLocationAndFloor(BigDecimal longitude, BigDecimal latitude, Integer floor, Integer excludedSpaceId) {
+        if (spaceRepository.countSpacesConflictingByLocationAndFloor(latitude, longitude, floor, excludedSpaceId) > 0) {
+            throw new InvalidDataException("Ya existe un espacio en esas coordenadas sin un piso distinto informado.");
         }
-        return locationService.create(longitude, latitude);
     }
 
     //Este metodo maneja solo espacios activos
@@ -385,16 +384,13 @@ public class SpaceService {
 
         space.setPublicationDate(java.time.LocalDate.now());
 
-        // Coordenadas de ubicación
         if (spaceDTO.location() != null) {
-            Location nuevaLocacion = new Location();
-            nuevaLocacion.setLatitude(spaceDTO.location().latitude());
-            nuevaLocacion.setLongitude(spaceDTO.location().longitude());
-
-            space.setLocation(nuevaLocacion);
+            validateLocationAndFloor(spaceDTO.location().longitude(), spaceDTO.location().latitude(), spaceDTO.floor(), null);
+            space.setLocation(locationService.create(spaceDTO.location().longitude(), spaceDTO.location().latitude()));
         } else {
             throw new InvalidDataException("La ubicación geográfica es obligatoria.");
         }
+        space.setFloor(spaceDTO.floor());
 
         if (spaceDTO.services() != null && !spaceDTO.services().isEmpty()) {
             List<SpaceServiceItem> items = spaceDTO.services().stream().map(sDto -> {
