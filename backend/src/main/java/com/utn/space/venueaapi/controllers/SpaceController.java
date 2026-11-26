@@ -424,4 +424,37 @@ public class SpaceController {
         return ResponseEntity.ok(new MessageResponseDTO("Espacio eliminado con exito."));
     }
 
+    @DeleteMapping("/ownedspace/pause/{id}")
+    @PreAuthorize("hasAnyRole('OFFERER', 'ADMIN')")
+    @Operation(
+            summary = "Marca un espacio propio como pausado",
+            description = "Pausa un espacio activo del dueño. Cancela sus reservas futuras y marca como pendiente el reembolso de las que fueron pagadas."
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "Espacio pausado; respuesta con mensaje",
+            content = @Content(schema = @Schema(implementation = MessageResponseDTO.class))
+    )
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<MessageResponseDTO> pauseOwnedSpace(@PathVariable Integer id){
+        spaceService.pauseOwnedSpace(id);
+        return ResponseEntity.ok(new MessageResponseDTO("Espacio pausado con exito."));
+    }
+
+    @PutMapping("/ownedspace/reactive/{id}")
+    @PreAuthorize("hasAnyRole('OFFERER', 'ADMIN')")
+    @Operation(
+            summary = "Reactiva un espacio propio",
+            description = "Reactiva un espacio pausado por su dueño. Las reservas canceladas al pausarlo no se restauran."
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "Espacio reactivado; respuesta con mensaje",
+            content = @Content(schema = @Schema(implementation = MessageResponseDTO.class))
+    )
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<MessageResponseDTO> reactiveOwnedSpace(@PathVariable Integer id){
+        spaceService.reactiveOwnedSpace(id);
+        return ResponseEntity.ok(new MessageResponseDTO("Espacio reactivado con exito."));
+    }
 }

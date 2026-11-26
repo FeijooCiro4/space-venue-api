@@ -307,7 +307,10 @@ public class SpaceService {
     }
 
     private boolean isDeletedByOwner(Space space) {
-        return Boolean.TRUE.equals(space.getDeletedByOwner());
+        // OWNER_PAUSED was historically stored in deletedByOwner as well; keep those records usable.
+        return space.getDeactivationReason() != ESpaceDeactivationReason.OWNER_PAUSED
+                && (Boolean.TRUE.equals(space.getDeletedByOwner())
+                || space.getDeactivationReason() == ESpaceDeactivationReason.OWNER_DELETED);
     }
 
     //Soft delete hecho por el dueño: queda inactivo y marcado como eliminado para distinguirlo de un espacio pendiente de aprobación
@@ -328,6 +331,51 @@ public class SpaceService {
         spaceToDelete.setDeletedByOwner(true);
         spaceToDelete.setDeactivationReason(ESpaceDeactivationReason.OWNER_DELETED);
         spaceRepository.save(spaceToDelete);
+    }
+
+    @Transactional
+    public void pauseOwnedSpace(Integer id){
+        Integer loggedOwnerId = consumerService.getLoggedConsumerId();
+        Space spaceToPause = findByIdForUpdate(id);
+
+        if(!Objects.equals(spaceToPause.getConsumerOwner().getIdConsumer(), loggedOwnerId)){
+            throw new InvalidDataException("Debe ser dueño del espacio que desea pausar.");
+        }
+        if (isDeletedByOwner(spaceToPause)) {
+            throw new InvalidDataException("El espacio fue eliminado.");
+        }
+        if (spaceToPause.getDeactivationReason() == ESpaceDeactivationReason.OWNER_PAUSED) {
+            throw new InvalidDataException("El espacio ya está pausado.");
+        }
+        if (!Boolean.TRUE.equals(spaceToPause.getIsActive())) {
+            throw new InvalidDataException("Solo se pueden pausar espacios activos.");
+        }
+        reservationClosureService.closeFutureReservations(spaceToPause, ECancellationReason.OWNER,
+                "el dueño pausó el espacio.");
+        spaceToPause.setIsActive(false);
+        spaceToPause.setDeletedByOwner(false);
+        spaceToPause.setDeactivationReason(ESpaceDeactivationReason.OWNER_PAUSED);
+        spaceRepository.save(spaceToPause);
+    }
+
+    @Transactional
+    public void reactiveOwnedSpace(Integer id){
+        Integer loggedOwnerId = consumerService.getLoggedConsumerId();
+        Space spaceToPause = findByIdForUpdate(id);
+
+        if(!Objects.equals(spaceToPause.getConsumerOwner().getIdConsumer(), loggedOwnerId)){
+            throw new InvalidDataException("Debe ser dueño del espacio que desea reactivar.");
+        }
+        if (isDeletedByOwner(spaceToPause)) {
+            throw new InvalidDataException("El espacio fue eliminado.");
+        }
+        if (spaceToPause.getDeactivationReason() != ESpaceDeactivationReason.OWNER_PAUSED) {
+            throw new InvalidDataException("El espacio no está pausado.");
+        }
+        spaceToPause.setIsActive(true);
+        spaceToPause.setDeletedByOwner(false);
+        spaceToPause.setDeactivationReason(null);
+        spaceRepository.save(spaceToPause);
     }
 
     @Transactional
