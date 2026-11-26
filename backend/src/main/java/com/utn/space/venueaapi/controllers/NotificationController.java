@@ -42,7 +42,7 @@ public class NotificationController {
     @Autowired
     private ConsumerService consumerService;
     @Autowired
-    private NotificationStreamService notificationStreamService;
+    private NotificationStreamService notificationStreamService;///SSE
 
 ///------------------------------------------------Metodos--------------------------------------------------------------------
     @PostMapping
@@ -175,7 +175,7 @@ public class NotificationController {
         long count = notificationService.countUnseenForConsumer();
         return ResponseEntity.ok(java.util.Map.of("count", count));
     }
-
+    ///-----------------------------------------SSE----------------------------------------------------------------
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     @Operation(
             summary = "Suscripción SSE a nuevas notificaciones.",
@@ -196,7 +196,7 @@ public class NotificationController {
         Integer consumerId = consumerService.getLoggedConsumerId();
         return notificationStreamService.subscribe(consumerId);
     }
-
+    ///---------------------------------------SSE------------------------------------------------------------------
     @GetMapping("/consumer/{id}")
     @Operation(
             summary = "Busca notificaciones de un consumidor",
