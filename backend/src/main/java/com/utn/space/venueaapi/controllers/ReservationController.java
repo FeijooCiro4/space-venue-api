@@ -6,6 +6,7 @@ import com.utn.space.venueaapi.model.Reservation;
 import com.utn.space.venueaapi.model.ReservationStatus;
 import com.utn.space.venueaapi.model.flags.Create;
 import com.utn.space.venueaapi.model.flags.Update;
+import com.utn.space.venueaapi.model.records.CancellationRefundDTO;
 import com.utn.space.venueaapi.model.records.ErrorResponseDTO;
 import com.utn.space.venueaapi.model.records.ReservationCalendarDTO;
 import com.utn.space.venueaapi.model.records.ReservationDTO;
@@ -368,15 +369,37 @@ public class ReservationController {
     @PreAuthorize("hasRole('ADMIN') or @securityUtils.canReadReservation(#id, authentication.name)")
     @Operation(
             summary = "Cancela una reserva",
-            description = "Cambia el estado de TENTATIVE o CONFIRMED a CANCELLED."
+            description = "Cambia el estado de TENTATIVE o CONFIRMED a CANCELLED. Si estaba pagada (CONFIRMED) aplica la política "
+                    + "de cancelación y guarda el reembolso en la reserva (refundPercentage, refundAmount)."
     )
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<Reservation> cancelReservation(@Parameter(description = "ID de la Reservación") @PathVariable Integer id,
                                                          Authentication authentication){
-        boolean isAdmin = authentication.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
         return ResponseEntity
                 .status(HttpStatus.OK)
-                .body(reservationService.cancelReservation(id, authentication.getName(), isAdmin));
+                .body(reservationService.cancelReservation(id, authentication.getName(), isAdmin(authentication)));
+    }
+
+    @GetMapping("/{id}/cancellation-preview")
+    @PreAuthorize("hasRole('ADMIN') or @securityUtils.canReadReservation(#id, authentication.name)")
+    @Operation(
+            summary = "Vista previa de la cancelación",
+            description = "Calcula, sin modificar nada, el reembolso que correspondería si quien consulta cancelara "
+                    + "la reserva ahora. Política global: cancelada por el dueño o la plataforma devuelve el 100%; "
+                    + "por el cliente, 100% con 7 días o más de anticipación, 50% entre 48 h y 7 días y 0% con "
+                    + "menos de 48 h. Sin pago aprobado "
+                    + "no hay reembolso (paid = false)."
+    )
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<CancellationRefundDTO> previewCancellation(@Parameter(description = "ID de la Reservación") @PathVariable Integer id,
+                                                                     Authentication authentication){
+        return ResponseEntity
+                .status(HttpStatus.OK)
+                .body(reservationService.previewCancellation(id, authentication.getName(), isAdmin(authentication)));
+    }
+
+    private static boolean isAdmin(Authentication authentication) {
+        return authentication.getAuthorities().stream().anyMatch(a -> "ROLE_ADMIN".equals(a.getAuthority()));
     }
 
     @DeleteMapping("/{id}")

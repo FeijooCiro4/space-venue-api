@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.Formula;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -42,12 +43,24 @@ public class Reservation {
     @Enumerated(EnumType.STRING)
     private ECancellationReason cancellationReason;
 
-    // true si se canceló estando pagada por una causa ajena al cliente (dueño, admin o baja) y hay que devolverle el total.
+    // true si se canceló estando pagada y le corresponde un reembolso al cliente (refundAmount > 0).
     // Por ahora el reembolso NO se hace automáticamente: este flag marca las reservas que quedan pendientes de reintegro
     private Boolean refundPending = false;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
+
+    // Resultado de la política de cancelación, guardado al cancelar. Solo si estaba pagada; null en el resto
+    @Column(name = "refund_percentage")
+    private Integer refundPercentage;
+
+    @Column(name = "refund_amount", precision = 10, scale = 2)
+    private BigDecimal refundAmount;
+
+    // true si tiene un pago aprobado. Se calcula al leer la reserva (no es una columna ni se puede modificar):
+    // el front lo usa para mostrar "Confirmada y pagada"
+    @Formula("(select count(*) > 0 from payments p where p.id_reservation = id_reservation and p.status = 'approved')")
+    private Boolean paid;
 
     @JsonIgnore
     private Boolean isActive=true;

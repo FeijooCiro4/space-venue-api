@@ -31,8 +31,6 @@ public class SpaceService {
     @Autowired
     LocationService locationService;
     @Autowired
-    CancellationPoliciesService cancellationPoliciesService;
-    @Autowired
     CommentRepository commentRepository;
     @Autowired
     ReservationClosureService reservationClosureService;
@@ -117,7 +115,6 @@ public class SpaceService {
             throw new InvalidDataException("El dueño del espacio debe tener la cuenta activa y ser oferente o administrador.");
         }
         spaceToInsert.setLocation(locationService.findByLongitudeAndLatitude(spaceDTO.location().longitude(), spaceDTO.location().latitude()));
-        spaceToInsert.setCancellationPolicies(cancellationPoliciesService.findByType(parsearPolitica(spaceDTO.cancellationPolicies())));
         spaceToInsert.setNameSpace(spaceDTO.nameSpace());
         spaceToInsert.setDescription(spaceDTO.description());
         spaceToInsert.setBasePrice(spaceDTO.basePrice());
@@ -154,15 +151,12 @@ public class SpaceService {
         if (dto.location() == null || dto.location().longitude() == null || dto.location().latitude() == null) {
             throw new InvalidDataException("La ubicación del espacio es obligatoria.");
         }
-        final EPolicyType policy = parsearPolitica(dto.cancellationPolicies());
         Location location = resolveEditedLocation(space.getLocation(), dto.location().longitude(), dto.location().latitude());
-        CancellationPolicies cancellation = cancellationPoliciesService.findByType(policy);
         space.setNameSpace(dto.nameSpace());
         space.setDescription(dto.description());
         space.setBasePrice(dto.basePrice());
         space.setBufferTime(dto.bufferTime());
         space.setLocation(location);
-        space.setCancellationPolicies(cancellation);
         // Conservar propietario, actividad, publicación y catálogo. Los servicios tienen sus propias rutas.
     }
 
@@ -402,12 +396,6 @@ public class SpaceService {
             throw new InvalidDataException("La ubicación geográfica es obligatoria.");
         }
 
-        if (spaceDTO.cancellationPolicies() != null) {
-            EPolicyType tipoEnum = parsearPolitica(spaceDTO.cancellationPolicies());
-            CancellationPolicies politicaBD = cancellationPoliciesService.findByType(tipoEnum);
-            space.setCancellationPolicies(politicaBD);
-        }
-
         if (spaceDTO.services() != null && !spaceDTO.services().isEmpty()) {
             List<SpaceServiceItem> items = spaceDTO.services().stream().map(sDto -> {
                 if (sDto.price() == null || sDto.price().signum() < 0) {
@@ -445,14 +433,6 @@ public class SpaceService {
 
 
     //Convierte el texto recibido a la política; si no existe es un error del usuario, no del servidor
-    private EPolicyType parsearPolitica(String valor) {
-        try {
-            return EPolicyType.valueOf(valor.trim().toUpperCase());
-        } catch (IllegalArgumentException | NullPointerException e) {
-            throw new InvalidDataException("La política de cancelación no es válida.");
-        }
-    }
-
     public void calcularRatingYCount(Space space){
         List<Comment> lista = commentRepository.findAllBySpaceIdSpace(space.getIdSpace());
         if(!lista.isEmpty()){

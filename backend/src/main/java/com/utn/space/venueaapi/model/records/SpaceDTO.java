@@ -29,12 +29,6 @@ public record SpaceDTO(
         @Schema(description = "Una locación")
         LocationDTO location,
 
-        @NotNull(groups = {Create.class, Update.class})
-        @NotBlank(groups = {Create.class, Update.class})
-        @Schema(description = "Una Politica de cancelación")
-        String cancellationPolicies,
-
-
         @NotBlank(groups = {Create.class, Update.class})
         @Schema(description = "Nombre del Espacio", example = "Salon de Fiestas: Ejemplo")
         String nameSpace,
