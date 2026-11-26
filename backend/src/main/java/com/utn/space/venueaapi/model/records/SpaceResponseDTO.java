@@ -9,7 +9,7 @@ import java.util.List;
 
 public record SpaceResponseDTO(
         Integer idSpace, PublicOwner consumerOwner, PublicLocation location,
-        PublicCancellationPolicy cancellationPolicies, String nameSpace, String description,
+        String nameSpace, String description,
         BigDecimal basePrice, LocalDate publicationDate, Integer bufferTime,
         Double rating, Integer commentCount,
         Boolean isActive, Boolean deletedByOwner, ESpaceDeactivationReason deactivationReason,
@@ -19,7 +19,5 @@ public record SpaceResponseDTO(
 ) {
     public record PublicOwner(Integer idConsumer, String firstname, String lastname) {}
     public record PublicLocation(Integer idLocation, BigDecimal longitude, BigDecimal latitude) {}
-    public record PublicCancellationPolicy(Integer idCancellationPolicies, String type,
-                                           Integer daysAnticipation, BigDecimal refundPercentage) {}
     public record PublicService(Integer id, String description, BigDecimal price, Boolean isActive) {}
 }

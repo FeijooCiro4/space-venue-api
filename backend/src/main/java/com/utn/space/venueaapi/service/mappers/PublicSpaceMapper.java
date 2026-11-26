@@ -14,12 +14,9 @@ public final class PublicSpaceMapper {
         if (space == null) return null;
         var owner = space.getConsumerOwner();
         var location = space.getLocation();
-        var policy = space.getCancellationPolicies();
         return new SpaceResponseDTO(space.getIdSpace(),
                 owner == null ? null : new SpaceResponseDTO.PublicOwner(owner.getIdConsumer(), owner.getFirstname(), owner.getLastname()),
                 location == null ? null : new SpaceResponseDTO.PublicLocation(location.getIdLocation(), location.getLongitude(), location.getLatitude()),
-                policy == null ? null : new SpaceResponseDTO.PublicCancellationPolicy(policy.getIdCancellationPolicies(),
-                        policy.getType() == null ? null : policy.getType().name(), policy.getDaysAnticipation(), policy.getRefundPercentage()),
                 space.getNameSpace(), space.getDescription(), space.getBasePrice(), space.getPublicationDate(),
                 space.getBufferTime(),
                 space.getRating(), space.getCommentCount() == null ? 0 : space.getCommentCount(),

@@ -5,6 +5,7 @@ import com.utn.space.venueaapi.model.ECancellationReason;
 import com.utn.space.venueaapi.model.Reservation;
 import com.utn.space.venueaapi.model.ReservationStatus;
 import com.utn.space.venueaapi.model.Space;
+import com.utn.space.venueaapi.model.records.CancellationRefundDTO;
 import com.utn.space.venueaapi.repository.PaymentRepository;
 import com.utn.space.venueaapi.repository.ReservationRepository;
 import com.utn.space.venueaapi.repository.SpaceRepository;
@@ -28,6 +29,7 @@ public class ReservationClosureService {
     private final SpaceRepository spaceRepository;
     private final NotificationService notificationService;
     private final EntityManager entityManager;
+    private final CancellationRefundService cancellationRefundService;
 
     // Estados que todavía no empezaron y se pueden cancelar
     private static final List<ReservationStatus> CANCELABLES = List.of(ReservationStatus.TENTATIVE, ReservationStatus.CONFIRMED);
@@ -45,7 +47,8 @@ public class ReservationClosureService {
     }
 
     // Cancela las reservas TENTATIVE y CONFIRMED del espacio y avisa a cada cliente.
-    // Las pagadas quedan con refundPending = true (el reembolso no se hace automáticamente todavía).
+    // Se aplica la política de cancelación: las pagadas quedan con el reembolso calculado y refundPending = true
+    // (el reembolso no se hace automáticamente todavía).
     // Las COMPLETED, CANCELLED y REJECTED no se tocan. Si hay alguna en curso no cambia nada.
     // Debe llamarse dentro de la transacción de la baja, así si algo falla no queda nada a medias.
     // Devuelve cuántas reservas canceló
@@ -64,29 +67,30 @@ public class ReservationClosureService {
             entityManager.lock(r, LockModeType.PESSIMISTIC_WRITE);
             r.setStatus(ReservationStatus.CANCELLED);
             r.setCancellationReason(reason);
-            boolean pagada = isPaid(r);
-            if (pagada) r.setRefundPending(true);
+            CancellationRefundDTO refund = cancellationRefundService.applyRefundToReservation(r, reason);
             reservationRepository.save(r);
             notificationService.createNotification(r.getConsumer(),
                     "Tu reserva \"" + r.getTitle() + "\" en " + locked.getNameSpace() + " fue cancelada: " + motivo
-                            + (pagada ? " Se te va a reintegrar el total de lo pagado." : ""));
+                            + CancellationRefundService.clientNotice(refund));
         }
         return aCancelar.size();
     }
 
     // Cancela una reserva del lado del cliente (cuando se da de baja la cuenta del cliente) y avisa al dueño del espacio.
-    // Si estaba pagada y el motivo no es CLIENT, queda con refundPending. Debe llamarse dentro de una transacción
+    // Se aplica la política de cancelación: si la baja la pidió el cliente (CLIENT) se usa la tabla por anticipación;
+    // si la hizo un admin, se le devuelve el total. Debe llamarse dentro de una transacción
     @Transactional(propagation = Propagation.MANDATORY)
     public void cancelForClientClosure(Reservation r, ECancellationReason reason, String motivo) {
         entityManager.lock(r, LockModeType.PESSIMISTIC_WRITE);
         r.setStatus(ReservationStatus.CANCELLED);
         r.setCancellationReason(reason);
-        if (reason != ECancellationReason.CLIENT && isPaid(r)) r.setRefundPending(true);
+        CancellationRefundDTO refund = cancellationRefundService.applyRefundToReservation(r, reason);
         reservationRepository.save(r);
         var cliente = r.getConsumer();
         notificationService.createNotification(r.getSpace().getConsumerOwner(),
                 "La reserva de " + cliente.getFirstname() + " " + cliente.getLastname() + " en "
-                        + r.getSpace().getNameSpace() + " fue cancelada: " + motivo);
+                        + r.getSpace().getNameSpace() + " fue cancelada: " + motivo
+                        + (reason == ECancellationReason.CLIENT ? CancellationRefundService.ownerNotice(refund) : ""));
     }
 
     // Pagada = tiene un pago aprobado por Mercado Pago (CONFIRMED no alcanza: también es "aprobada por el dueño, sin pagar")
