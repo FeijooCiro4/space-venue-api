@@ -23,6 +23,8 @@ public class NotificationStreamService {
     private final ConcurrentHashMap<Integer, CopyOnWriteArrayList<SseEmitter>> emitters =
             new ConcurrentHashMap<>();
 
+    ///--------------------------------Metodos-------------------------------------------------------------
+    ///
     public SseEmitter subscribe(Integer consumerId) {
         SseEmitter emitter = new SseEmitter(EMITTER_TIMEOUT_MS);
         CopyOnWriteArrayList<SseEmitter> consumerEmitters =

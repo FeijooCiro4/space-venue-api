@@ -30,7 +30,7 @@ public class NotificationService {
     private static final long HORAS_ENTRE_SOLICITUDES_OFERENTE = 24;
 
 
-    ///--------------------------------Matodos-------------------------------------------------------------
+    ///--------------------------------Metodos-------------------------------------------------------------
     ///
     public List<Notification> listAll(){
         return notificationRepository.findAll();
