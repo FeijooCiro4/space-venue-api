@@ -10,6 +10,8 @@ import com.utn.space.venueaapi.repository.NotificationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -103,8 +105,23 @@ public class NotificationService {
         notification.setCreatedAt(LocalDateTime.now(ZoneOffset.UTC));
         notification.setIsSeen(false);
         Notification saved = notificationRepository.save(notification);
-        notificationStreamService.publishNewNotification(saved);
+        publishNewNotificationAfterCommit(saved);
         return saved;
+    }
+///------------------Solo manda el evento  despues de que la notificacion aparezca en la BBD
+    private void publishNewNotificationAfterCommit(Notification notification) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()
+                && TransactionSynchronizationManager.isActualTransactionActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    notificationStreamService.publishNewNotification(notification);
+                }
+            });
+            return;
+        }
+
+        notificationStreamService.publishNewNotification(notification);
     }
 
     //El usuario logueado pide ser oferente: se manda una notificación a cada admin activo
