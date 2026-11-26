@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.Formula;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -55,6 +56,11 @@ public class Reservation {
 
     @Column(name = "refund_amount", precision = 10, scale = 2)
     private BigDecimal refundAmount;
+
+    // true si tiene un pago aprobado. Se calcula al leer la reserva (no es una columna ni se puede modificar):
+    // el front lo usa para mostrar "Confirmada y pagada"
+    @Formula("(select count(*) > 0 from payments p where p.id_reservation = id_reservation and p.status = 'approved')")
+    private Boolean paid;
 
     @JsonIgnore
     private Boolean isActive=true;
