@@ -1,7 +1,9 @@
 package com.utn.space.venueaapi.service;
 
+import com.utn.space.venueaapi.config.AppClock;
 import com.utn.space.venueaapi.exceptions.*;
 import com.utn.space.venueaapi.model.*;
+import com.utn.space.venueaapi.model.records.CancellationRefundDTO;
 import com.utn.space.venueaapi.model.records.ReservationCalendarDTO;
 import com.utn.space.venueaapi.model.records.ReservationDTO;
 import com.utn.space.venueaapi.repository.SpaceServiceItemRepository;
@@ -47,6 +49,9 @@ public class ReservationService {
 
     @Autowired
     private NotificationService notificationService;
+
+    @Autowired
+    private CancellationRefundService cancellationRefundService;
 
 
     private final SpaceServiceItemRepository spaceServiceItemRepository;
@@ -157,7 +162,7 @@ public class ReservationService {
 
     private void validateBooking(Consumer consumer, Space space, LocalDateTime from,
                                  LocalDateTime until, Integer excludedReservationId) {
-        if (from == null || until == null || !until.isAfter(from) || from.isBefore(LocalDateTime.now())) {
+        if (from == null || until == null || !until.isAfter(from) || from.isBefore(AppClock.now())) {
             throw new InvalidDateException("La reserva debe comenzar en el futuro y tener una duración positiva.");
         }
         if (Duration.between(from, until).compareTo(Duration.ofHours(24)) >= 0) {
@@ -286,21 +291,10 @@ public class ReservationService {
     }
 
     // Cancelación pedida por un usuario: el motivo sale de quién la pide.
-    // Si es el cliente de la reserva cuenta como CLIENT aunque también sea admin
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public Reservation cancelReservation(Integer id, String username, boolean isAdmin) {
         Reservation reservation = findByIdForUpdate(id);
-        ECancellationReason reason;
-        if (reservation.getConsumer().getCredentials().getUsername().equals(username)) {
-            reason = ECancellationReason.CLIENT;
-        } else if (reservation.getSpace().getConsumerOwner().getCredentials().getUsername().equals(username)) {
-            reason = ECancellationReason.OWNER;
-        } else if (isAdmin) {
-            reason = ECancellationReason.PLATFORM;
-        } else {
-            throw new InvalidReservationException("No podés cancelar esta reserva.");
-        }
-        return cancelReservation(reservation, reason);
+        return cancelReservation(reservation, resolveCancellationReason(reservation, username, isAdmin));
     }
 
     // Cancelación automática (ej. el scheduler con EXPIRED)
@@ -309,16 +303,35 @@ public class ReservationService {
         return cancelReservation(findByIdForUpdate(id), reason);
     }
 
+    // Lo que le correspondería al cliente si quien consulta cancelara la reserva ahora. No modifica nada
+    @Transactional(readOnly = true)
+    public CancellationRefundDTO previewCancellation(Integer id, String username, boolean isAdmin) {
+        Reservation reservation = findById(id);
+        requireState(reservation, ReservationStatus.TENTATIVE, ReservationStatus.CONFIRMED);
+        return cancellationRefundService.preview(reservation, resolveCancellationReason(reservation, username, isAdmin));
+    }
+
+    // Si es el cliente de la reserva cuenta como CLIENT aunque también sea admin
+    private ECancellationReason resolveCancellationReason(Reservation reservation, String username, boolean isAdmin) {
+        if (reservation.getConsumer().getCredentials().getUsername().equals(username)) {
+            return ECancellationReason.CLIENT;
+        }
+        if (reservation.getSpace().getConsumerOwner().getCredentials().getUsername().equals(username)) {
+            return ECancellationReason.OWNER;
+        }
+        if (isAdmin) {
+            return ECancellationReason.PLATFORM;
+        }
+        throw new InvalidReservationException("No podés cancelar esta reserva.");
+    }
+
     private Reservation cancelReservation(Reservation reservation, ECancellationReason reason) {
         requireState(reservation, ReservationStatus.TENTATIVE, ReservationStatus.CONFIRMED);
         reservation.setStatus(ReservationStatus.CANCELLED);
         reservation.setCancellationReason(reason);
-        // Si la cancela el dueño o un admin estando pagada, al cliente se le debe el total.
-        // Si la cancela el cliente correspondería aplicar la política de cancelación (no implementado)
-        boolean reintegro = (reason == ECancellationReason.OWNER || reason == ECancellationReason.PLATFORM)
-                && paymentRepository.existsByReservation_IdAndStatus(reservation.getId(), "approved");
-        if (reintegro) reservation.setRefundPending(true);
-        String avisoReintegro = reintegro ? " Se te va a reintegrar el total de lo pagado." : "";
+        // Aplica la política de cancelación y deja guardado el resultado en la reserva
+        CancellationRefundDTO refund = cancellationRefundService.applyRefundToReservation(reservation, reason);
+        String avisoReintegro = CancellationRefundService.clientNotice(refund);
 
         Consumer client = reservation.getConsumer();
         Consumer owner = reservation.getSpace().getConsumerOwner();
@@ -327,7 +340,8 @@ public class ReservationService {
         // Se avisa a la parte que no canceló
         switch (reason) {
             case CLIENT -> notificationService.createNotification(owner,
-                    "La reserva de " + cliente + " en " + espacio + " fue cancelada por el cliente.");
+                    "La reserva de " + cliente + " en " + espacio + " fue cancelada por el cliente."
+                            + CancellationRefundService.ownerNotice(refund));
             case OWNER -> notificationService.createNotification(client,
                     "Tu reserva \"" + reservation.getTitle() + "\" en " + espacio + " fue cancelada por el dueño del espacio." + avisoReintegro);
             case EXPIRED -> {

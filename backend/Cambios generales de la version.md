@@ -101,7 +101,8 @@ importes históricos que ya fueran inconsistentes.
 
 `PUT /api/spaces/{id}` y `PUT /api/spaces/ownedspace/{id}` actualizan la entidad existente bajo
 bloqueo. Permiten editar nombre, descripción, precio base, separación entre alquileres,
-ubicación y política de cancelación. La ubicación y política deben existir, como antes.
+y ubicación. La ubicación debe existir, como antes. La política de cancelación ya no es por
+espacio: es global (ver "Política de cancelación y reembolsos").
 Conservan propietario, actividad, fecha de publicación y la colección de servicios; imágenes
 y reservas siguen asociadas. `idSpace` e `idConsumerOwner` pueden omitirse en edición; si se
 incluyen, deben coincidir con los almacenados. Ninguna de estas rutas transfiere la propiedad.
@@ -109,12 +110,39 @@ incluyen, deben coincidir con los almacenados. Ninguna de estas rutas transfiere
 Para modificar el catálogo se usan las rutas de `/api/services`; consultar sus rutas exactas en
 la documentación de la API. No se introduce un cambio de esquema ni una migración de base de datos.
 
+## Política de cancelación y reembolsos
+
+Se eliminaron las políticas de cancelación por espacio (`cancellationpolicies`, `EPolicyType`
+y el campo `cancellationPolicies` de `SpaceDTO` y `SpaceResponseDTO`). Ahora hay una política
+global, en `CancellationRefundService`:
+
+| Situación | Reembolso al cliente |
+| --- | --- |
+| Sin pago aprobado | No aplica (no hubo cobro) |
+| Cancelada por el dueño o la plataforma | 100% |
+| Cliente, faltando >= 7 días | 100% |
+| Cliente, faltando >= 48 h | 50% |
+| Cliente, faltando < 48 h | 0% |
+
+Los tiempos se miden contra `fromDate`, en hora argentina (`AppClock`). El porcentaje se aplica
+al total pagado.
+
+Al cancelar una reserva pagada se guardan `refundPercentage` y `refundAmount`, y `refundPending`
+queda en true si hay algo que devolver (el reembolso por Mercado Pago todavía no es automático).
+`GET /api/reservations/{id}/cancellation-preview` devuelve el cálculo sin modificar nada.
+
+Migraciones: `deploy/migraciones/2026-11-politica-cancelacion-global-A.sql` antes de desplegar
+y `-B.sql` después de desplegar el back y el front.
+
+El scheduler de estados y la validación de "la reserva debe empezar en el futuro" también usan
+ahora la hora argentina: con el servidor en UTC estaban 3 h adelantados.
+
 ## Privacidad del catálogo y registro 
 
 Las lecturas de espacios devuelven `SpaceResponseDTO`, y las de imágenes devuelven
 `SpaceImageResponseDTO`, con su espacio anidado convertido al mismo DTO. Sus propiedades
 contienen valores y otros DTO, nunca entidades JPA. Se conserva la estructura de lectura
-(`consumerOwner`, `location`, `cancellationPolicies`, `services`), pero el propietario público
+(`consumerOwner`, `location`, `services`), pero el propietario público
 incluye **únicamente `idConsumer`, `firstname` y `lastname`**. No incluye email, teléfono,
 username, credenciales, roles ni estado de cuenta. Esta reducción también se aplica a las
 listas de espacios del propietario y de administración. Los perfiles autorizados conservan

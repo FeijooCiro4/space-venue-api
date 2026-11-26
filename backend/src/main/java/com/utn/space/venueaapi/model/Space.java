@@ -33,10 +33,6 @@ public class Space {
     @JoinColumn(name = "idLocation")
     private Location location;
 
-    @ManyToOne(cascade = CascadeType.PERSIST)
-    @JoinColumn(name = "idCancellationPolicies")
-    private CancellationPolicies cancellationPolicies;
-
     @Column(name = "name_space")
     private String nameSpace;
 

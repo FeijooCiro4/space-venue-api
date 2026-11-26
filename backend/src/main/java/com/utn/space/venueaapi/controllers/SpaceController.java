@@ -131,7 +131,6 @@ public class SpaceController {
                                         "latitude": -34.6037,
                                         "longitude": -58.3816
                                       },
-                                      "cancellationPolicies": "FLEXIBLE",
                                       "nameSpace": "Salón de fiestas",
                                       "description": "Salón para eventos de hasta 100 personas",
                                       "basePrice": 25000.00,
@@ -191,7 +190,6 @@ public class SpaceController {
                                         "latitude": -34.6037,
                                         "longitude": -58.3816
                                       },
-                                      "cancellationPolicies": "FLEXIBLE",
                                       "nameSpace": "Salón de fiestas",
                                       "description": "Salón para eventos de hasta 100 personas",
                                       "basePrice": 25000.00,
@@ -233,7 +231,6 @@ public class SpaceController {
                                                         "latitude": -34.6037,
                                                         "longitude": -58.3816
                                                       },
-                                                      "cancellationPolicies": "MODERATED",
                                                       "nameSpace": "Salón actualizado",
                                                       "description": "Salón actualizado para eventos",
                                                       "basePrice": 30000.00,
@@ -274,7 +271,6 @@ public class SpaceController {
                                                         "latitude": -34.6037,
                                                         "longitude": -58.3816
                                                       },
-                                                      "cancellationPolicies": "MODERATED",
                                                       "nameSpace": "Salón actualizado",
                                                       "description": "Salón actualizado para eventos",
                                                       "basePrice": 30000.00,

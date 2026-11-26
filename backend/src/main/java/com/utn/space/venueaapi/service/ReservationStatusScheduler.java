@@ -1,5 +1,6 @@
 package com.utn.space.venueaapi.service;
 
+import com.utn.space.venueaapi.config.AppClock;
 import com.utn.space.venueaapi.model.ECancellationReason;
 import com.utn.space.venueaapi.model.ReservationStatus;
 import com.utn.space.venueaapi.repository.ReservationRepository;
@@ -22,7 +23,8 @@ public class ReservationStatusScheduler {
     @Scheduled(fixedRate = 10_000)
     @Transactional
     public void updateReservationStatuses() {
-        LocalDateTime now = LocalDateTime.now();
+        // Hora argentina: las fechas de las reservas se cargan en esa zona y el servidor corre en UTC
+        LocalDateTime now = AppClock.now();
 
         int started = reservationRepository.updateStartedReservations(
                 ReservationStatus.CONFIRMED,
