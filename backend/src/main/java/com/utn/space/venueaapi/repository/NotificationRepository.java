@@ -14,6 +14,8 @@ import java.util.List;
 public interface NotificationRepository extends JpaRepository<Notification,Integer> {
     List<Notification> findByConsumer_IdConsumer(Integer idConsumer);
 
+    long countByConsumer_IdConsumerAndIsSeenFalse(Integer idConsumer);
+
     @Modifying
     @Transactional
     @Query("UPDATE Notification n SET n.isSeen = true WHERE n.consumer.idConsumer = :idConsumer AND n.isSeen = false")

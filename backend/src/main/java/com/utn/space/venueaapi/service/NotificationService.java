@@ -23,12 +23,14 @@ public class NotificationService {
     private ConsumerService consumerService;
     @Autowired
     private ConsumerRepository consumerRepository;
+    @Autowired
+    private NotificationStreamService notificationStreamService;
 
     //Tiempo mínimo entre dos solicitudes para ser oferente del mismo usuario
     private static final long HORAS_ENTRE_SOLICITUDES_OFERENTE = 24;
 
 
-    ///--------------------------------Matodos-------------------------------------------------------------
+    ///--------------------------------Metodos-------------------------------------------------------------
     ///
     public List<Notification> listAll(){
         return notificationRepository.findAll();
@@ -41,11 +43,16 @@ public class NotificationService {
     public Notification markAsSeen (Integer id){
         Notification aux= notificationRepository.findById(id).orElseThrow(()->new IdNotFoundException("la notificación",id));
         aux.setIsSeen(true);
-        return notificationRepository.save(aux);
+        Notification saved = notificationRepository.save(aux);
+        notificationStreamService.publishUnreadCount(saved.getConsumer().getIdConsumer());
+        return saved;
     }
 
     public int markAllAsSeenForLoggedConsumer() {
-        return notificationRepository.markAllAsSeenByConsumerId(consumerService.getLoggedConsumerId());
+        Integer consumerId = consumerService.getLoggedConsumerId();
+        int updatedCount = notificationRepository.markAllAsSeenByConsumerId(consumerId);
+        notificationStreamService.publishUnreadCount(consumerId);
+        return updatedCount;
     }
 
     public List<Notification> listAllByIdConsumer (Integer id){
@@ -95,7 +102,9 @@ public class NotificationService {
         // Guardamos la fecha en UTC para evitar desfasajes entre servidor/cliente
         notification.setCreatedAt(LocalDateTime.now(ZoneOffset.UTC));
         notification.setIsSeen(false);
-        return notificationRepository.save(notification);
+        Notification saved = notificationRepository.save(notification);
+        notificationStreamService.publishNewNotification(saved);
+        return saved;
     }
 
     //El usuario logueado pide ser oferente: se manda una notificación a cada admin activo
