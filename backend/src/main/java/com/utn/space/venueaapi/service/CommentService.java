@@ -5,6 +5,7 @@ import com.utn.space.venueaapi.exceptions.InvalidDataException;
 import com.utn.space.venueaapi.model.Comment;
 import com.utn.space.venueaapi.model.ECommentDeactivationReason;
 import com.utn.space.venueaapi.model.ECommentStatus;
+import com.utn.space.venueaapi.model.ENotificationType;
 import com.utn.space.venueaapi.model.Reservation;
 import com.utn.space.venueaapi.model.ReservationStatus;
 import com.utn.space.venueaapi.model.records.CommentDTO;
@@ -73,7 +74,9 @@ public class CommentService {
 
         notificationService.createNotification(
                 comment.getConsumer(),
-                "Su comentario en el espacio " + comment.getSpace().getNameSpace() + " que decia '" + comment.getDescription() + "' ha sido eliminado por un administrador."
+                "Su comentario en el espacio " + comment.getSpace().getNameSpace() + " que decia '" + comment.getDescription() + "' ha sido eliminado por un administrador.",
+                ENotificationType.COMMENT_DEACTIVATED,
+                comment.getSpace().getIdSpace()
         );
     }
 
@@ -99,7 +102,9 @@ public class CommentService {
 
         notificationService.createNotification(
                 comment.getConsumer(),
-                "Su comentario en el espacio " + comment.getSpace().getNameSpace() + " que decia '" + comment.getDescription() + "' ha sido reactivado por un administrador."
+                "Su comentario en el espacio " + comment.getSpace().getNameSpace() + " que decia '" + comment.getDescription() + "' ha sido reactivado por un administrador.",
+                ENotificationType.COMMENT_REACTIVATED,
+                comment.getSpace().getIdSpace()
         );
     }
 

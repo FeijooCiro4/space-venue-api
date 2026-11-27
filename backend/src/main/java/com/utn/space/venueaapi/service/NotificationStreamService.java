@@ -108,6 +108,8 @@ public class NotificationStreamService {
         dto.put("createdAt", notification.getCreatedAt() == null
                 ? null
                 : notification.getCreatedAt().atOffset(ZoneOffset.UTC).toInstant().toEpochMilli());
+        dto.put("type", notification.getType() != null ? notification.getType().name() : null);
+        dto.put("referenceId", notification.getReferenceId());
         return dto;
     }
 }

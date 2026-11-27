@@ -233,7 +233,9 @@ public class ReservationService {
         Reservation saved = reservationRepository.save(reservation);
         notificationService.createNotification(space.getConsumerOwner(),
                 "Nueva reserva de " + client.getFirstname() + " " + client.getLastname()
-                        + " para " + space.getNameSpace() + ". Confirmá o rechazá la reserva.");
+                        + " para " + space.getNameSpace() + ". Confirmá o rechazá la reserva.",
+                ENotificationType.RESERVATION_CREATED,
+                saved.getId());
         return saved;
     }
 
@@ -276,7 +278,9 @@ public class ReservationService {
         validateBooking(reservation.getConsumer(), space, reservation.getFromDate(), reservation.getUntilDate(), id);
         reservation.setStatus(ReservationStatus.CONFIRMED);
         notificationService.createNotification(reservation.getConsumer(),
-                "Tu reserva en " + space.getNameSpace() + " ha sido confirmada. ¡Ya puedes pagar!");
+                "Tu reserva en " + space.getNameSpace() + " ha sido confirmada. ¡Ya puedes pagar!",
+                ENotificationType.RESERVATION_CONFIRMED,
+                reservation.getId());
         return reservationRepository.save(reservation);
     }
 
@@ -286,7 +290,9 @@ public class ReservationService {
         requireState(reservation, ReservationStatus.TENTATIVE);
         reservation.setStatus(ReservationStatus.REJECTED);
         notificationService.createNotification(reservation.getConsumer(),
-                "Tu reserva en " + reservation.getSpace().getNameSpace() + " ha sido rechazada por el propietario.");
+                "Tu reserva en " + reservation.getSpace().getNameSpace() + " ha sido rechazada por el propietario.",
+                ENotificationType.RESERVATION_REJECTED,
+                reservation.getId());
         return reservationRepository.save(reservation);
     }
 
@@ -341,20 +347,32 @@ public class ReservationService {
         switch (reason) {
             case CLIENT -> notificationService.createNotification(owner,
                     "La reserva de " + cliente + " en " + espacio + " fue cancelada por el cliente."
-                            + CancellationRefundService.ownerNotice(refund));
+                            + CancellationRefundService.ownerNotice(refund),
+                    ENotificationType.RESERVATION_CANCELLED,
+                    reservation.getId());
             case OWNER -> notificationService.createNotification(client,
-                    "Tu reserva \"" + reservation.getTitle() + "\" en " + espacio + " fue cancelada por el dueño del espacio." + avisoReintegro);
+                    "Tu reserva \"" + reservation.getTitle() + "\" en " + espacio + " fue cancelada por el dueño del espacio." + avisoReintegro,
+                    ENotificationType.RESERVATION_CANCELLED,
+                    reservation.getId());
             case EXPIRED -> {
                 notificationService.createNotification(client,
-                        "Tu reserva \"" + reservation.getTitle() + "\" en " + espacio + " se canceló porque el dueño no la confirmó a tiempo.");
+                        "Tu reserva \"" + reservation.getTitle() + "\" en " + espacio + " se canceló porque el dueño no la confirmó a tiempo.",
+                        ENotificationType.RESERVATION_CANCELLED,
+                        reservation.getId());
                 notificationService.createNotification(owner,
-                        "La reserva de " + cliente + " en " + espacio + " se canceló porque no la confirmaste antes de la fecha de inicio.");
+                        "La reserva de " + cliente + " en " + espacio + " se canceló porque no la confirmaste antes de la fecha de inicio.",
+                        ENotificationType.RESERVATION_CANCELLED,
+                        reservation.getId());
             }
             default -> {
                 notificationService.createNotification(client,
-                        "Tu reserva \"" + reservation.getTitle() + "\" en " + espacio + " fue cancelada por un administrador." + avisoReintegro);
+                        "Tu reserva \"" + reservation.getTitle() + "\" en " + espacio + " fue cancelada por un administrador." + avisoReintegro,
+                        ENotificationType.RESERVATION_CANCELLED,
+                        reservation.getId());
                 notificationService.createNotification(owner,
-                        "La reserva de " + cliente + " en " + espacio + " fue cancelada por un administrador.");
+                        "La reserva de " + cliente + " en " + espacio + " fue cancelada por un administrador.",
+                        ENotificationType.RESERVATION_CANCELLED,
+                        reservation.getId());
             }
         }
         return reservationRepository.save(reservation);

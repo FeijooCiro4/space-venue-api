@@ -24,6 +24,14 @@ public class Notification {
 
     @Column(name = "message", columnDefinition = "TEXT")
     private String message;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type")
+    private ENotificationType type;
+
+    @Column(name = "reference_id")
+    private Integer referenceId;
+
     private Boolean isSeen=false;
 
     @ManyToOne
