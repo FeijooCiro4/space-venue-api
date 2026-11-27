@@ -3,6 +3,7 @@ package com.utn.space.venueaapi.service;
 import com.utn.space.venueaapi.exceptions.IdNotFoundException;
 import com.utn.space.venueaapi.exceptions.InvalidDataException;
 import com.utn.space.venueaapi.model.Consumer;
+import com.utn.space.venueaapi.model.ENotificationType;
 import com.utn.space.venueaapi.model.ERoles;
 import com.utn.space.venueaapi.model.Notification;
 import com.utn.space.venueaapi.repository.ConsumerRepository;
@@ -96,9 +97,15 @@ public class NotificationService {
 
     // Método para crear una notificación
     public Notification createNotification(Consumer consumer, String message) {
+        return createNotification(consumer, message, null, null);
+    }
+
+    public Notification createNotification(Consumer consumer, String message, ENotificationType type, Integer referenceId) {
         Notification notification = new Notification();
         notification.setConsumer(consumer);
         notification.setMessage(message);
+        notification.setType(type);
+        notification.setReferenceId(referenceId);
         // Guardamos la fecha en UTC para evitar desfasajes entre servidor/cliente
         notification.setCreatedAt(LocalDateTime.now(ZoneOffset.UTC));
         notification.setIsSeen(false);
@@ -136,7 +143,7 @@ public class NotificationService {
                 consumer.getLastname(),
                 consumer.getEmail()
         );
-        admins.forEach(admin -> createNotification(admin, message));
+        admins.forEach(admin -> createNotification(admin, message, ENotificationType.OFFERER_REQUEST, null));
 
         consumer.setOffererRequestedAt(ahora);
         consumerRepository.save(consumer);
