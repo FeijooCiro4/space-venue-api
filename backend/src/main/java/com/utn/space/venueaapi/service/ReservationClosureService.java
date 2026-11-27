@@ -2,6 +2,7 @@ package com.utn.space.venueaapi.service;
 
 import com.utn.space.venueaapi.exceptions.InvalidReservationException;
 import com.utn.space.venueaapi.model.ECancellationReason;
+import com.utn.space.venueaapi.model.ENotificationType;
 import com.utn.space.venueaapi.model.Reservation;
 import com.utn.space.venueaapi.model.ReservationStatus;
 import com.utn.space.venueaapi.model.Space;
