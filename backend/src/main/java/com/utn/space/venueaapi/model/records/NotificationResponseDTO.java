@@ -24,8 +24,11 @@ public record NotificationResponseDTO(
         @Schema(description = "Fecha de creación en milisegundos Unix UTC", example = "1794610800000")
         Long createdAt,
 
-        @Schema(nullable = true, description = "Campo reservado; actualmente se devuelve null")
+        @Schema(nullable = true, description = "Tipo de notificación (enum ENotificationType), null en notificaciones anteriores")
         String type,
+
+        @Schema(nullable = true, description = "Identificador del recurso relacionado")
+        Integer referenceId,
 
         @Schema(nullable = true, description = "Campo reservado; actualmente se devuelve null")
         String detail

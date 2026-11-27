@@ -1,0 +1,12 @@
+package com.utn.space.venueaapi.model;
+
+public enum ENotificationType {
+    WELCOME,
+    RESERVATION_CREATED,
+    RESERVATION_CONFIRMED,
+    RESERVATION_REJECTED,
+    RESERVATION_CANCELLED,
+    COMMENT_DEACTIVATED,
+    COMMENT_REACTIVATED,
+    OFFERER_REQUEST
+}

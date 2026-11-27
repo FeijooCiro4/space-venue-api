@@ -315,7 +315,8 @@ public class NotificationController {
             createdMillis = n.getCreatedAt().atOffset(ZoneOffset.UTC).toInstant().toEpochMilli();
         }
         m.put("createdAt", createdMillis);
-        m.put("type", null);
+        m.put("type", n.getType() != null ? n.getType().name() : null);
+        m.put("referenceId", n.getReferenceId());
         m.put("detail", null);
         return m;
     }

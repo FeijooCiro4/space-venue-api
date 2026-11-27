@@ -2,6 +2,7 @@ package com.utn.space.venueaapi.controllers;
 
 import com.mercadopago.net.HttpStatus;
 import com.utn.space.venueaapi.model.Consumer;
+import com.utn.space.venueaapi.model.ENotificationType;
 import com.utn.space.venueaapi.model.records.ErrorResponseDTO;
 import com.utn.space.venueaapi.model.records.LoginRequestDTO;
 import com.utn.space.venueaapi.model.records.LoginResponseDTO;
@@ -155,7 +156,9 @@ public class AuthController {
                      Si tenés dudas o algo no funciona como esperabas, escribinos. Estamos para ayudarte.
                      ¡Que disfrutes la experiencia!
         
-                    -El equipo de Space&Venue"""
+                    -El equipo de Space&Venue""",
+                    ENotificationType.WELCOME,
+                    null
             );
         } catch (Exception e) {
             log.error("No se pudo crear la notificación de bienvenida para '{}'", dto.username(), e);

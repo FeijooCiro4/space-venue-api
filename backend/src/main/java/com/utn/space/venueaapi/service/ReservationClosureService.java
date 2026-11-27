@@ -71,7 +71,9 @@ public class ReservationClosureService {
             reservationRepository.save(r);
             notificationService.createNotification(r.getConsumer(),
                     "Tu reserva \"" + r.getTitle() + "\" en " + locked.getNameSpace() + " fue cancelada: " + motivo
-                            + CancellationRefundService.clientNotice(refund));
+                            + CancellationRefundService.clientNotice(refund),
+                    ENotificationType.RESERVATION_CANCELLED,
+                    r.getId());
         }
         return aCancelar.size();
     }
@@ -90,7 +92,9 @@ public class ReservationClosureService {
         notificationService.createNotification(r.getSpace().getConsumerOwner(),
                 "La reserva de " + cliente.getFirstname() + " " + cliente.getLastname() + " en "
                         + r.getSpace().getNameSpace() + " fue cancelada: " + motivo
-                        + (reason == ECancellationReason.CLIENT ? CancellationRefundService.ownerNotice(refund) : ""));
+                        + (reason == ECancellationReason.CLIENT ? CancellationRefundService.ownerNotice(refund) : ""),
+                ENotificationType.RESERVATION_CANCELLED,
+                r.getId());
     }
 
     // Pagada = tiene un pago aprobado por Mercado Pago (CONFIRMED no alcanza: también es "aprobada por el dueño, sin pagar")
