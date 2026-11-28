@@ -17,7 +17,7 @@ public final class PublicSpaceMapper {
         return new SpaceResponseDTO(space.getIdSpace(),
                 owner == null ? null : new SpaceResponseDTO.PublicOwner(owner.getIdConsumer(), owner.getFirstname(), owner.getLastname()),
                 location == null ? null : new SpaceResponseDTO.PublicLocation(location.getIdLocation(), location.getLongitude(), location.getLatitude()),
-                space.getNameSpace(), space.getDescription(), space.getBasePrice(), space.getPublicationDate(),
+                space.getFloor(), space.getNameSpace(), space.getDescription(), space.getBasePrice(), space.getPublicationDate(),
                 space.getBufferTime(),
                 space.getRating(), space.getCommentCount() == null ? 0 : space.getCommentCount(),
                 space.getIsActive(), isDeletedByOwner(space),

@@ -40,7 +40,7 @@ public class LocationService {
         return locationRepository.existsById(id);
     }
 
-    //calcula la sistancia entre dos puntos
+    //calcula la distancia entre dos puntos
     private double calculateDistance(BigDecimal lat1, BigDecimal lon1, BigDecimal lat2, BigDecimal lon2){
         double dlat = Math.toRadians(lat2.doubleValue() - lat1.doubleValue());
         double dlon = Math.toRadians(lon2.doubleValue() - lon1.doubleValue());
@@ -52,6 +52,10 @@ public class LocationService {
         double c = 2* Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
         return EARTH_RADIOUS.doubleValue() * c;
+    }
+
+    public double distanceInMeters(BigDecimal lat1, BigDecimal lon1, BigDecimal lat2, BigDecimal lon2) {
+        return calculateDistance(lat1, lon1, lat2, lon2) * 1000;
     }
 
     // radiousKm es la distancia del usuario desde la que vamos a considerar los espacios para su filtrado

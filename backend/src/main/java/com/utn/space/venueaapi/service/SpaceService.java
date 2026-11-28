@@ -3,9 +3,11 @@ package com.utn.space.venueaapi.service;
 import com.utn.space.venueaapi.exceptions.IdNotFoundException;
 import com.utn.space.venueaapi.exceptions.InvalidDataException;
 import com.utn.space.venueaapi.model.*;
+import com.utn.space.venueaapi.model.records.LocationBoundingBox;
 import com.utn.space.venueaapi.model.records.SpaceDTO;
 import com.utn.space.venueaapi.model.records.SpaceFilterDTO;
 import com.utn.space.venueaapi.repository.CommentRepository;
+import com.utn.space.venueaapi.model.LocationFloorCandidate;
 import com.utn.space.venueaapi.repository.SpaceRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import jakarta.persistence.EntityManager;
@@ -22,6 +24,9 @@ import java.util.Objects;
 
 @Service
 public class SpaceService {
+    private static final double LOCATION_CONFLICT_RADIUS_METERS = 10;
+    private static final double EARTH_RADIUS_METERS = 6_371_000;
+
     @Autowired
     private EntityManager entityManager;
     @Autowired
@@ -114,7 +119,9 @@ public class SpaceService {
         if (!spaceToInsert.isOwnerAvailable()) {
             throw new InvalidDataException("El dueño del espacio debe tener la cuenta activa y ser oferente o administrador.");
         }
-        spaceToInsert.setLocation(locationService.findByLongitudeAndLatitude(spaceDTO.location().longitude(), spaceDTO.location().latitude()));
+        validateLocationAndFloor(spaceDTO.location().longitude(), spaceDTO.location().latitude(), spaceDTO.floor(), null);
+        spaceToInsert.setLocation(locationService.create(spaceDTO.location().longitude(), spaceDTO.location().latitude()));
+        spaceToInsert.setFloor(spaceDTO.floor());
         spaceToInsert.setNameSpace(spaceDTO.nameSpace());
         spaceToInsert.setDescription(spaceDTO.description());
         spaceToInsert.setBasePrice(spaceDTO.basePrice());
@@ -151,7 +158,9 @@ public class SpaceService {
         if (dto.location() == null || dto.location().longitude() == null || dto.location().latitude() == null) {
             throw new InvalidDataException("La ubicación del espacio es obligatoria.");
         }
-        Location location = resolveEditedLocation(space.getLocation(), dto.location().longitude(), dto.location().latitude());
+        validateLocationAndFloor(dto.location().longitude(), dto.location().latitude(), dto.floor(), space.getIdSpace());
+        Location location = locationService.create(dto.location().longitude(), dto.location().latitude());
+        space.setFloor(dto.floor());
         space.setNameSpace(dto.nameSpace());
         space.setDescription(dto.description());
         space.setBasePrice(dto.basePrice());
@@ -180,15 +189,52 @@ public class SpaceService {
                 && Objects.equals(owner.getCredentials().getUsername(), auth.getName());
     }
 
-    //Si las coordenadas no cambiaron se conserva la ubicación actual; si cambiaron se crea una nueva
-    //(no se modifica la existente porque podría estar compartida con otro espacio)
-    private Location resolveEditedLocation(Location current, BigDecimal longitude, BigDecimal latitude) {
-        if (current != null && current.getLongitude() != null && current.getLatitude() != null
-                && current.getLongitude().compareTo(longitude) == 0
-                && current.getLatitude().compareTo(latitude) == 0) {
-            return current;
+    private void validateLocationAndFloor(BigDecimal longitude, BigDecimal latitude, Integer floor, Integer excludedSpaceId) {
+        LocationBoundingBox bounds = calculateBoundingBox(latitude, longitude, LOCATION_CONFLICT_RADIUS_METERS);
+        List<LocationFloorCandidate> candidates = spaceRepository.findLocationFloorCandidates(
+                bounds.minLatitude(), bounds.maxLatitude(),
+                bounds.minLongitude(), bounds.maxLongitude(),
+                bounds.crossesAntimeridian(), excludedSpaceId);
+
+        for (LocationFloorCandidate candidate : candidates) {
+            double distance = locationService.distanceInMeters(
+                    latitude, longitude, candidate.getLatitude(), candidate.getLongitude());
+            if (distance <= LOCATION_CONFLICT_RADIUS_METERS
+                    && (floor == null || candidate.getFloor() == null || Objects.equals(floor, candidate.getFloor()))) {
+                throw new InvalidDataException("Ya existe un espacio cercano sin un piso distinto informado.");
+            }
         }
-        return locationService.create(longitude, latitude);
+    }
+
+    private LocationBoundingBox calculateBoundingBox(BigDecimal latitude, BigDecimal longitude, double radiusMeters) {
+        double centerLatitude = latitude.doubleValue();
+        double centerLongitude = longitude.doubleValue();
+        double angularRadius = radiusMeters / EARTH_RADIUS_METERS;
+        double latitudeDelta = Math.toDegrees(angularRadius);
+
+        BigDecimal minLatitude = BigDecimal.valueOf(Math.max(-90, centerLatitude - latitudeDelta));
+        BigDecimal maxLatitude = BigDecimal.valueOf(Math.min(90, centerLatitude + latitudeDelta));
+
+        double cosineLatitude = Math.abs(Math.cos(Math.toRadians(centerLatitude)));
+        double longitudeRatio = Math.sin(angularRadius) / cosineLatitude;
+        if (cosineLatitude < 1e-12 || longitudeRatio >= 1) {
+            return new LocationBoundingBox(minLatitude, maxLatitude,
+                    BigDecimal.valueOf(-180), BigDecimal.valueOf(180), false);
+        }
+
+        double longitudeDelta = Math.toDegrees(Math.asin(longitudeRatio));
+        double rawMinLongitude = centerLongitude - longitudeDelta;
+        double rawMaxLongitude = centerLongitude + longitudeDelta;
+        boolean crossesAntimeridian = rawMinLongitude < -180 || rawMaxLongitude > 180;
+        double minLongitude = crossesAntimeridian ? normalizeLongitude(rawMinLongitude) : rawMinLongitude;
+        double maxLongitude = crossesAntimeridian ? normalizeLongitude(rawMaxLongitude) : rawMaxLongitude;
+
+        return new LocationBoundingBox(minLatitude, maxLatitude,
+                BigDecimal.valueOf(minLongitude), BigDecimal.valueOf(maxLongitude), crossesAntimeridian);
+    }
+
+    private double normalizeLongitude(double longitude) {
+        return ((longitude + 180) % 360 + 360) % 360 - 180;
     }
 
     //Este metodo maneja solo espacios activos
@@ -385,16 +431,13 @@ public class SpaceService {
 
         space.setPublicationDate(java.time.LocalDate.now());
 
-        // Coordenadas de ubicación
         if (spaceDTO.location() != null) {
-            Location nuevaLocacion = new Location();
-            nuevaLocacion.setLatitude(spaceDTO.location().latitude());
-            nuevaLocacion.setLongitude(spaceDTO.location().longitude());
-
-            space.setLocation(nuevaLocacion);
+            validateLocationAndFloor(spaceDTO.location().longitude(), spaceDTO.location().latitude(), spaceDTO.floor(), null);
+            space.setLocation(locationService.create(spaceDTO.location().longitude(), spaceDTO.location().latitude()));
         } else {
             throw new InvalidDataException("La ubicación geográfica es obligatoria.");
         }
+        space.setFloor(spaceDTO.floor());
 
         if (spaceDTO.services() != null && !spaceDTO.services().isEmpty()) {
             List<SpaceServiceItem> items = spaceDTO.services().stream().map(sDto -> {

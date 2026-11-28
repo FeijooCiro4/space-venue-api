@@ -33,6 +33,9 @@ public class Space {
     @JoinColumn(name = "idLocation")
     private Location location;
 
+    @Column(name = "floor")
+    private Integer floor;
+
     @Column(name = "name_space")
     private String nameSpace;
 

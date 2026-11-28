@@ -8,7 +8,7 @@ import java.util.List;
 
 
 public record SpaceResponseDTO(
-        Integer idSpace, PublicOwner consumerOwner, PublicLocation location,
+        Integer idSpace, PublicOwner consumerOwner, PublicLocation location, Integer floor,
         String nameSpace, String description,
         BigDecimal basePrice, LocalDate publicationDate, Integer bufferTime,
         Double rating, Integer commentCount,

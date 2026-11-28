@@ -1,5 +1,6 @@
 package com.utn.space.venueaapi.repository;
 
+import com.utn.space.venueaapi.model.LocationFloorCandidate;
 import com.utn.space.venueaapi.model.Space;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -10,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -22,6 +24,31 @@ public interface SpaceRepository extends JpaRepository<Space, Integer> {
     // Indica si el usuario tiene espacios que no fueron eliminados por él.
     // Se usa para no quitarle el rol OFFERER a alguien que todavía gestiona espacios
     boolean existsByConsumerOwnerIdConsumerAndDeletedByOwnerFalse(Integer idConsumer);
+
+    // Candidatos dentro de una caja geográfica; la distancia exacta se comprueba en el servicio.
+    @Query("""
+            SELECT s.floor AS floor,
+                   s.location.latitude AS latitude,
+                   s.location.longitude AS longitude
+            FROM Space s
+            WHERE s.location.latitude BETWEEN :minLatitude AND :maxLatitude
+              AND (
+                    (:crossesAntimeridian = false AND s.location.longitude BETWEEN :minLongitude AND :maxLongitude)
+                    OR
+                    (:crossesAntimeridian = true AND
+                        (s.location.longitude >= :minLongitude OR s.location.longitude <= :maxLongitude))
+              )
+              AND (:excludedSpaceId IS NULL OR s.idSpace <> :excludedSpaceId)
+              AND (s.deletedByOwner = false OR s.deletedByOwner IS NULL)
+            """)
+    List<LocationFloorCandidate> findLocationFloorCandidates(
+            @Param("minLatitude") BigDecimal minLatitude,
+            @Param("maxLatitude") BigDecimal maxLatitude,
+            @Param("minLongitude") BigDecimal minLongitude,
+            @Param("maxLongitude") BigDecimal maxLongitude,
+            @Param("crossesAntimeridian") boolean crossesAntimeridian,
+            @Param("excludedSpaceId") Integer excludedSpaceId
+    );
 
     // Todos los espacios de un dueño, en cualquier estado
     List<Space> findAllByConsumerOwnerIdConsumer(Integer idConsumer);

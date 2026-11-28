@@ -29,6 +29,9 @@ public record SpaceDTO(
         @Schema(description = "Una locación")
         LocationDTO location,
 
+        @Schema(description = "Piso del espacio. Puede ser null; se admiten enteros negativos para subsuelos.", example = "1")
+        Integer floor,
+
         @NotBlank(groups = {Create.class, Update.class})
         @Schema(description = "Nombre del Espacio", example = "Salon de Fiestas: Ejemplo")
         String nameSpace,
