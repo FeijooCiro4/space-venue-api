@@ -3,9 +3,11 @@ package com.utn.space.venueaapi.service;
 import com.utn.space.venueaapi.exceptions.IdNotFoundException;
 import com.utn.space.venueaapi.exceptions.InvalidDataException;
 import com.utn.space.venueaapi.model.*;
+import com.utn.space.venueaapi.model.records.LocationBoundingBox;
 import com.utn.space.venueaapi.model.records.SpaceDTO;
 import com.utn.space.venueaapi.model.records.SpaceFilterDTO;
 import com.utn.space.venueaapi.repository.CommentRepository;
+import com.utn.space.venueaapi.model.LocationFloorCandidate;
 import com.utn.space.venueaapi.repository.SpaceRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import jakarta.persistence.EntityManager;
@@ -22,6 +24,9 @@ import java.util.Objects;
 
 @Service
 public class SpaceService {
+    private static final double LOCATION_CONFLICT_RADIUS_METERS = 10;
+    private static final double EARTH_RADIUS_METERS = 6_371_000;
+
     @Autowired
     private EntityManager entityManager;
     @Autowired
@@ -185,9 +190,51 @@ public class SpaceService {
     }
 
     private void validateLocationAndFloor(BigDecimal longitude, BigDecimal latitude, Integer floor, Integer excludedSpaceId) {
-        if (spaceRepository.countSpacesConflictingByLocationAndFloor(latitude, longitude, floor, excludedSpaceId) > 0) {
-            throw new InvalidDataException("Ya existe un espacio en esas coordenadas sin un piso distinto informado.");
+        LocationBoundingBox bounds = calculateBoundingBox(latitude, longitude, LOCATION_CONFLICT_RADIUS_METERS);
+        List<LocationFloorCandidate> candidates = spaceRepository.findLocationFloorCandidates(
+                bounds.minLatitude(), bounds.maxLatitude(),
+                bounds.minLongitude(), bounds.maxLongitude(),
+                bounds.crossesAntimeridian(), excludedSpaceId);
+
+        for (LocationFloorCandidate candidate : candidates) {
+            double distance = locationService.distanceInMeters(
+                    latitude, longitude, candidate.getLatitude(), candidate.getLongitude());
+            if (distance <= LOCATION_CONFLICT_RADIUS_METERS
+                    && (floor == null || candidate.getFloor() == null || Objects.equals(floor, candidate.getFloor()))) {
+                throw new InvalidDataException("Ya existe un espacio cercano sin un piso distinto informado.");
+            }
         }
+    }
+
+    private LocationBoundingBox calculateBoundingBox(BigDecimal latitude, BigDecimal longitude, double radiusMeters) {
+        double centerLatitude = latitude.doubleValue();
+        double centerLongitude = longitude.doubleValue();
+        double angularRadius = radiusMeters / EARTH_RADIUS_METERS;
+        double latitudeDelta = Math.toDegrees(angularRadius);
+
+        BigDecimal minLatitude = BigDecimal.valueOf(Math.max(-90, centerLatitude - latitudeDelta));
+        BigDecimal maxLatitude = BigDecimal.valueOf(Math.min(90, centerLatitude + latitudeDelta));
+
+        double cosineLatitude = Math.abs(Math.cos(Math.toRadians(centerLatitude)));
+        double longitudeRatio = Math.sin(angularRadius) / cosineLatitude;
+        if (cosineLatitude < 1e-12 || longitudeRatio >= 1) {
+            return new LocationBoundingBox(minLatitude, maxLatitude,
+                    BigDecimal.valueOf(-180), BigDecimal.valueOf(180), false);
+        }
+
+        double longitudeDelta = Math.toDegrees(Math.asin(longitudeRatio));
+        double rawMinLongitude = centerLongitude - longitudeDelta;
+        double rawMaxLongitude = centerLongitude + longitudeDelta;
+        boolean crossesAntimeridian = rawMinLongitude < -180 || rawMaxLongitude > 180;
+        double minLongitude = crossesAntimeridian ? normalizeLongitude(rawMinLongitude) : rawMinLongitude;
+        double maxLongitude = crossesAntimeridian ? normalizeLongitude(rawMaxLongitude) : rawMaxLongitude;
+
+        return new LocationBoundingBox(minLatitude, maxLatitude,
+                BigDecimal.valueOf(minLongitude), BigDecimal.valueOf(maxLongitude), crossesAntimeridian);
+    }
+
+    private double normalizeLongitude(double longitude) {
+        return ((longitude + 180) % 360 + 360) % 360 - 180;
     }
 
     //Este metodo maneja solo espacios activos

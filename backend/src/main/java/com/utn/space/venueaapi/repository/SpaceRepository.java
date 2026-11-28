@@ -1,5 +1,6 @@
 package com.utn.space.venueaapi.repository;
 
+import com.utn.space.venueaapi.model.LocationFloorCandidate;
 import com.utn.space.venueaapi.model.Space;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -24,21 +25,28 @@ public interface SpaceRepository extends JpaRepository<Space, Integer> {
     // Se usa para no quitarle el rol OFFERER a alguien que todavía gestiona espacios
     boolean existsByConsumerOwnerIdConsumerAndDeletedByOwnerFalse(Integer idConsumer);
 
-    // Se devuelve el conteo de espacios que coinciden con la ubicación y el piso,
-    // excluyendo un espacio específico si se proporciona su ID (utilizado para excluir
-    // un espacio que está siendo editado).
+    // Candidatos dentro de una caja geográfica; la distancia exacta se comprueba en el servicio.
     @Query("""
-            SELECT COUNT(s) FROM Space s
-            WHERE s.location.latitude = :latitude
-              AND s.location.longitude = :longitude
+            SELECT s.floor AS floor,
+                   s.location.latitude AS latitude,
+                   s.location.longitude AS longitude
+            FROM Space s
+            WHERE s.location.latitude BETWEEN :minLatitude AND :maxLatitude
+              AND (
+                    (:crossesAntimeridian = false AND s.location.longitude BETWEEN :minLongitude AND :maxLongitude)
+                    OR
+                    (:crossesAntimeridian = true AND
+                        (s.location.longitude >= :minLongitude OR s.location.longitude <= :maxLongitude))
+              )
               AND (:excludedSpaceId IS NULL OR s.idSpace <> :excludedSpaceId)
-              AND (:floor IS NULL OR s.floor IS NULL OR s.floor = :floor)
               AND (s.deletedByOwner = false OR s.deletedByOwner IS NULL)
             """)
-    long countSpacesConflictingByLocationAndFloor(
-            @Param("latitude") BigDecimal latitude,
-            @Param("longitude") BigDecimal longitude,
-            @Param("floor") Integer floor,
+    List<LocationFloorCandidate> findLocationFloorCandidates(
+            @Param("minLatitude") BigDecimal minLatitude,
+            @Param("maxLatitude") BigDecimal maxLatitude,
+            @Param("minLongitude") BigDecimal minLongitude,
+            @Param("maxLongitude") BigDecimal maxLongitude,
+            @Param("crossesAntimeridian") boolean crossesAntimeridian,
             @Param("excludedSpaceId") Integer excludedSpaceId
     );
 
